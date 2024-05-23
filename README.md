@@ -29,3 +29,8 @@ Cliente:
 ### Gruppo 2 studenti
 
 Simulare la possibilità di avere più clienti al tavolo, ogni cliente è un nuovo client che si siede allo stesso tavolo (utilizzare un numero di tavolo). Ogni client effettua un ordine separato
+
+## Authors
+
+- [@kekko3121](https://github.com/kekko3121)
+- [@TonIann7](https://github.com/TonIann7)
