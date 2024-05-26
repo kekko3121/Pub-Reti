@@ -5,7 +5,7 @@ class Tavolo{
     private:
         
         int maxSedieTavolo; // numero massimo di sedie disponibili per tavolo
-        int clientiSeduti; // numero di clienti seduti al tavolo
+        int clientiSeduti = 0; // numero di clienti seduti al tavolo
         int numeroTavolo; // numero del tavolo
 
     public:
@@ -18,7 +18,8 @@ class Tavolo{
         int getNumeroTavolo(); // restituisce il numero del tavolo
         int getNumeroClienti(); //restituisce il numero di clienti seduti al tavolo
         int getMaxSedieTavolo(); //restituisce massimo di posti disponibile al tavolo
-    };
+        bool tavoloVuoto(); // verifica se il tavolo è vuoto
+};
 
 Tavolo::Tavolo(int maxSedie, int numeroTavolo){
     this->maxSedieTavolo = maxSedie; //imposto il numero massimo di sedie
@@ -43,13 +44,13 @@ void Tavolo::liberaPosto(){
 }
 
 int Tavolo::getNumeroTavolo(){
-    return numeroTavolo; // restituisce il numero del tavolo
+    return this->numeroTavolo; // restituisce il numero del tavolo
 }
 
 int Tavolo::getNumeroClienti(){
-    return clientiSeduti; // restituisce il numero di clienti seduti al tavolo
+    return this->clientiSeduti; // restituisce il numero di clienti seduti al tavolo
 }
 
-int Tavolo::getMaxSedieTavolo(){
-    return maxSedieTavolo; //restituisce massimo di posti disponibile al tavolo
+bool Tavolo::tavoloVuoto(){
+    return this->clientiSeduti == 0; // restituisce true se il tavolo è vuoto, altrimenti false
 }
