@@ -1,6 +1,10 @@
 /*
  Classe Tavolo per rappresentare i tavoli all'interno del Pub
 */
+
+#ifndef TAVOLO_H
+#define TAVOLO_H
+
 class Tavolo{
     private:
         
@@ -54,3 +58,9 @@ int Tavolo::getNumeroClienti(){
 bool Tavolo::tavoloVuoto(){
     return this->clientiSeduti == 0; // restituisce true se il tavolo è vuoto, altrimenti false
 }
+
+int Tavolo::getMaxSedieTavolo(){
+    return this->maxSedieTavolo;
+}
+
+#endif // TAVOLO_H

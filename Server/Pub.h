@@ -1,4 +1,12 @@
+/*
+ Classe Pub per rappresentare il Pub
+*/
+
+#ifndef PUB_H
+#define PUB_H
+
 #include <vector>
+#include <string>
 #include "Tavolo.h"
 using namespace std;
 
@@ -15,9 +23,10 @@ class Pub {
         bool aggiungiTavolo(int maxSedie); // metodo per aggiungere un tavolo nel locale
         bool postoDisponibile(int numeroTavolo); // metodo per verificare se ci sono posti nel tavolo scelto 
         bool aggiungiCliente(int numeroTavolo); // metodo per aggiungere il cliente al tavolo scelto
-        void preparaOrdine(); // metodo per preparare l'ordine del cliente
+        string preparaOrdine(); // metodo per preparare l'ordine del cliente
         int tavoloVuoto(); //verifica se il tavolo è vuoto
         bool liberaPosto(int numeroTavolo); // metodo per liberare un posto al tavolo
+        int postiDisponibili();
 };
 
 Pub::Pub(int maxClienti, int maxTavoli) {
@@ -72,6 +81,16 @@ bool Pub::liberaPosto(int numeroTavolo) {
     return false;
 }
 
-void Pub::preparaOrdine() {
-    // Implementazione per preparare l'ordine
+string Pub::preparaOrdine() {
+    return "Sto preparando l'ordine";
 }
+
+int Pub::postiDisponibili() {
+    int posti = 0;
+    for (Tavolo& tavolo : tavoli) {
+        posti += (tavolo.getMaxSedieTavolo() - tavolo.getNumeroClienti());
+    }
+    return posti;
+}
+
+#endif // PUB_H
