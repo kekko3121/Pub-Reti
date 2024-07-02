@@ -1,98 +1,124 @@
 #include "../Socket/Socket.h"
-#include <unistd.h> // per fork()
+#include <unistd.h>
+#include <signal.h>
 
-void serverProcess(Socket clientSocket) {
-    while (true) {
-        // Ricevere la richiesta dal client
-        std::string request;
-        int status = clientSocket.receive(request);
-        if (status > 0) {
-            std::cout << "Messaggio dal client: " << request << std::endl;
+// Global socket pointers for signal handling
+Socket* clientSocketPtr = nullptr;
+Socket* serverSocketPtr = nullptr;
 
-            // Esempio di risposta al client
-            std::string response = "Ricevuto messaggio: " + request;
-            clientSocket.send(response);
-        } else {
-            std::cerr << "Errore nella ricezione della richiesta dal client!" << std::endl;
-            break; // Esci dal loop se c'è un errore nella ricezione
-        }
-    }
-}
+// Signal handler for clean shutdown
+void signalHandler(int);
+void serverProcess(Socket);
 
 int main() {
-    Socket clientSocket, serverSocket;
+    // Definizione delle variabili
+    int serverPort = 25562; // Porta su cui il server in ascolto
+    string remoteHost = "127.0.0.1"; // Indirizzo IP del server remoto
+    int remotePort = 25564; // Porta del server remoto
 
-    // Creare il socket
-    if (!clientSocket.create()) {
-        std::cerr << "Errore nella creazione del socket del client!" << std::endl;
-        return 1;
-    }
-
-    // Connettersi al server
-    if (!clientSocket.connect("127.0.0.1", 25563)) {
-        std::cerr << "Errore nella connessione al server!" << std::endl;
-        return 1;
-    }
-
-    std::cout << "Connessione al server riuscita!" << std::endl;
-
+    // Creazione del socket server
+    Socket serverSocket;
     if (!serverSocket.create()) {
-        std::cerr << "Errore nella creazione del socket del client!" << std::endl;
+        cerr << "Errore nella creazione del socket server" << endl;
         return 1;
     }
 
-     if (!serverSocket.bind(25562)) {
-        std::cerr << "Errore nel bind del socket per il server locale!" << std::endl;
+    // Bind del socket server alla porta specificata
+    if (!serverSocket.bind(serverPort)) {
+        cerr << "Errore nel bind del socket server" << endl;
         return 1;
     }
 
+    // Mettere in ascolto il socket server
     if (!serverSocket.listen()) {
-        std::cerr << "Errore nell'ascolto delle connessioni per il server locale!" << std::endl;
+        cerr << "Errore nel mettere in ascolto il socket server" << endl;
         return 1;
     }
 
-    pid_t pid = fork();
+    cout << "Server in ascolto sulla porta " << serverPort << endl;
 
-    if (pid == -1) {
-        // Errore nella creazione del processo figlio
-        std::cerr << "Errore nella creazione del processo figlio!" << std::endl;
+    // Creazione del socket per la connessione remota
+    Socket remoteSocket;
+
+    if (!remoteSocket.create()) {
+        cerr << "Errore nella creazione del socket server" << endl;
         return 1;
+    }
 
+    // Connessione al server remoto
+    if (!remoteSocket.connect(remoteHost, remotePort)) {
+        cerr << "Errore nella connessione al server remoto: " << strerror(errno) << endl;
+        return 1;
     }
-    else if (pid == 0) {
-       // Processo figlio
-        Socket clientConnection;
-        if (serverSocket.accept(clientConnection)) {
-            std::cout << "Connessione accettata dal client locale!" << std::endl;
-            serverProcess(clientConnection);
+
+    cout << "Connesso al server remoto: " << remoteHost << ":" << remotePort << endl;
+
+    // Registrazione del signal handler
+    signal(SIGINT, signalHandler);
+
+    while (true) {
+        // Accetta una nuova connessione dal client
+        Socket clientSocket;
+        if (!serverSocket.accept(clientSocket)) {
+            cerr << "Errore nell'accettazione della connessione client" << endl;
+            continue;
         }
-        else {
-            std::cerr << "Errore nell'accettare la connessione dal client locale!" << std::endl;
-        } 
-    }
-    else {
-        // Processo padre
-        while (true) {
-            // Inviare un messaggio al server
-            std::string message = "Ciao server!";
-            if (!clientSocket.send(message)) {
-                std::cerr << "Errore nell'invio del messaggio al server!" << std::endl;
-                break; // Esci dal loop se c'è un errore nell'invio
+
+        cout << "Connessione client accettata" << endl;
+
+        // Crea un processo figlio per gestire la connessione client
+        pid_t pid = fork();
+        if (pid == 0) { // Processo figlio
+            // Chiude il descrittore del socket server nel processo figlio
+            if (!serverSocket.close()){
+                cerr << "Errore nella chiusura del socket server" << endl;
             }
 
-            std::cout << "Messaggio inviato al server!" << std::endl;
+            // Gestisce la comunicazione con il client
+            while (true) {
+                string message;
 
-            // Ricevere la risposta dal server
-            std::string response;
-            int status = clientSocket.receive(response);
-            if (status > 0) {
-                std::cout << "Risposta dal server: " << response << std::endl;
-            } else {
-                std::cerr << "Errore nella ricezione della risposta dal server!" << std::endl;
-                break; // Esci dal loop se c'è un errore nella ricezione
+                if (clientSocket.receive(message) <= 0) {
+                    break; // Connessione chiusa o errore
+                }
+
+                cout << "Messaggio ricevuto dal client: " << message << endl;
+
+                // Invia una risposta al client
+                if (!clientSocket.send("Messaggio ricevuto dal server")) {
+                    break; // Errore nell'invio
+                }
             }
+
+            // Chiude il socket client nel processo figlio
+            clientSocket.close();
+
+            cout << "Connessione client terminata" << endl;
+
+            exit(0); // Termina il processo figlio
+        } else if (pid > 0) { // Processo padre
+            // Continua ad accettare nuove connessioni client
+            continue;
+        } else { // Errore nella fork
+            cerr << "Errore nella creazione del processo figlio" << endl;
+            break;
         }
     }
+
+    // Chiude il socket server nel processo padre
+    serverSocket.close();
 
     return 0;
+}
+
+void signalHandler(int signum) {
+    if (clientSocketPtr != nullptr) {
+        clientSocketPtr->close();
+        std::cout << "Client socket closed successfully." << std::endl;
+    }
+    if (serverSocketPtr != nullptr) {
+        serverSocketPtr->close();
+        std::cout << "Server socket closed successfully." << std::endl;
+    }
+    exit(signum);
 }

@@ -1,12 +1,15 @@
 #include <iostream>
 #include <cstring>
-#include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
+using namespace std;
 
 class Socket {
     private:
         int m_sock; // descrizione del socket
-        sockaddr_in m_addr; // indirizzo del socket (IP e porta) 
+        sockaddr_in m_addr; // indirizzo del socket (IP e porta)
 
     public:
         Socket(); // costruttore per inizializzare il socket
@@ -16,10 +19,11 @@ class Socket {
         bool bind(int port); // associa il socket ad una porta
         bool listen() const; // mette il socket in ascolto
         bool accept(Socket& newSocket) const; // accetta una connessione in entrata
-        bool connect(const std::string& host, int port); // si connette ad un server
+        bool connect(const string& host, int port); // si connette ad un server
+        bool close(); // chiude il socket
 
-        bool send(const std::string& message) const; // invia un messaggio
-        int receive(std::string& message) const; // riceve un messaggio
+        bool send(const string& message) const; // invia un messaggio
+        int receive(string& message) const; // riceve un messaggio
 
         void setNonBlocking(const bool); // setta il socket in modalità non bloccante
 };
@@ -29,20 +33,20 @@ Socket::Socket() : m_sock(-1) { // inizializza il socket a -1
 }
 
 Socket::~Socket() { // distruttore per chiudere il socket
-    if (m_sock != -1) { // se il socket è stato creato
-        ::close(m_sock); // chiude il socket
-    }
+    close(); // ensure the socket is closed
 }
 
 bool Socket::create() { // crea il socket
     m_sock = socket(AF_INET, SOCK_STREAM, 0); // crea un socket TCP
     if (m_sock == -1) { // se la creazione del socket fallisce
+        cerr << "Errore nella creazione del socket: " << strerror(errno) << endl;
         return false; // ritorna false
     }
 
     int on = 1; // abilita l'opzione SO_REUSEADDR
     // imposta l'opzione SO_REUSEADDR per il socket m_sock
     if (setsockopt(m_sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+        cerr << "Errore nell'impostazione delle opzioni del socket: " << strerror(errno) << endl;
         return false;
     }
 
@@ -51,6 +55,7 @@ bool Socket::create() { // crea il socket
 
 bool Socket::bind(int port) { // associa il socket ad una porta
     if (m_sock == -1) {
+        cerr << "Socket non valido. Creare il socket prima di fare il bind." << endl;
         return false;
     }
 
@@ -59,6 +64,7 @@ bool Socket::bind(int port) { // associa il socket ad una porta
     m_addr.sin_port = htons(port); // inizializzazione della porta del server
 
     if (::bind(m_sock, (struct sockaddr*)&m_addr, sizeof(m_addr)) < 0) { // associa il socket ad un indirizzo e porta
+        cerr << "Errore nel bind del socket: " << strerror(errno) << endl;
         return false;
     }
 
@@ -67,10 +73,12 @@ bool Socket::bind(int port) { // associa il socket ad una porta
 
 bool Socket::listen() const { // mette il socket in ascolto
     if (m_sock == -1) {
+        cerr << "Socket non valido. Creare e fare il bind del socket prima di metterlo in ascolto." << endl;
         return false;
     }
 
     if (::listen(m_sock, 1024) < 0) { // inizio dell'ascolto del socket
+        cerr << "Errore nell'ascolto del socket: " << strerror(errno) << endl;
         return false;
     }
 
@@ -78,54 +86,74 @@ bool Socket::listen() const { // mette il socket in ascolto
 }
 
 bool Socket::accept(Socket& newSocket) const { // accetta una connessione in entrata
-    int addr_length = sizeof(m_addr); // lunghezza dell'indirizzo
-    newSocket.m_sock = ::accept(m_sock, (sockaddr*)&m_addr, (socklen_t*)&addr_length); // accetta la connessione in entrata e restituisce un nuovo socket
+    if (m_sock == -1) {
+        cerr << "Socket non valido. Creare, fare il bind e mettere in ascolto il socket prima di accettare connessioni." << endl;
+        return false;
+    }
+
+    socklen_t addr_length = sizeof(m_addr); // lunghezza dell'indirizzo
+    newSocket.m_sock = ::accept(m_sock, (sockaddr*)&m_addr, &addr_length); // accetta la connessione in entrata e restituisce un nuovo socket
 
     if (newSocket.m_sock <= 0) { // se la connessione non è stata accettata
+        cerr << "Errore nell'accettare la connessione: " << strerror(errno) << endl;
         return false;
     } else {
         return true;
     }
 }
 
-bool Socket::connect(const std::string& host, int port) { // si connette ad un server
+bool Socket::connect(const string& host, int port) { // si connette ad un server
     if (m_sock == -1) {
+        cerr << "Socket non valido. Creare il socket prima di connettersi." << endl;
         return false;
     }
 
     m_addr.sin_family = AF_INET; // inizializzazione della famiglia dell'indirizzo a IPv4
     m_addr.sin_port = htons(port); // inizializzazione della porta del server
 
-
     if (inet_pton(AF_INET, host.c_str(), &m_addr.sin_addr) <= 0) { // converte l'indirizzo ip da stringa a binario e lo memorizza in m_addr.sin_addr
+        cerr << "Errore nella conversione dell'indirizzo IP: " << strerror(errno) << endl;
         return false;
     }
 
     if (::connect(m_sock, (sockaddr*)&m_addr, sizeof(m_addr)) < 0) { // connessione al server 
+        cerr << "Errore nella connessione al server: " << strerror(errno) << endl;
         return false;
     }
 
     return true;
 }
 
-bool Socket::send(const std::string& message) const { // invia un messaggio
+bool Socket::send(const string& message) const { // invia un messaggio
+    if (m_sock == -1) {
+        cerr << "Socket non valido. Creare il socket prima di inviare messaggi." << endl;
+        return false;
+    }
+
     if (::send(m_sock, message.c_str(), message.size(), MSG_NOSIGNAL) < 0) { // invia il messaggio attraverso il socket
+        cerr << "Errore nell'invio del messaggio: " << strerror(errno) << endl;
         return false;
     } else {
         return true;
     }
 }
 
-int Socket::receive(std::string& message) const { // riceve un messaggio
+int Socket::receive(string& message) const { // riceve un messaggio
+    if (m_sock == -1) {
+        cerr << "Socket non valido. Creare il socket prima di ricevere messaggi." << endl;
+        return -1;
+    }
+
     char buffer[1024]; // buffer per memorizzare il messaggio
     message.clear(); // pulisce il messaggio
     memset(buffer, 0, 1024); // inizializza il buffer a 0
 
     int status = ::recv(m_sock, buffer, 1024, 0); // riceve il messaggio attraverso il socket
     if (status == -1) { // se la ricezione del messaggio fallisce
-        std::cout << "status == -1 errno == " << errno << " in Socket::recv\n";
-        return 0;
+        cerr << "Errore nella ricezione del messaggio: " << strerror(errno) << endl;
+        return -1;
     } else if (status == 0) { // se la connessione è stata chiusa
+        cerr << "Connessione chiusa dal peer." << endl;
         return 0;
     } else { // se la ricezione del messaggio ha successo
         message = buffer; // memorizza il messaggio nel buffer
@@ -133,20 +161,36 @@ int Socket::receive(std::string& message) const { // riceve un messaggio
     }
 }
 
-/*void Socket::setNonBlocking(const bool b) {
-    int opts;
+bool Socket::close(){
+    if (m_sock == -1) { // se la creazione del socket fallisce
+        cerr << "Socket non valido. Nessun socket da chiudere." << endl;
+        return false; // ritorna false
+    }
 
-    opts = fcntl(m_sock, F_GETFL);
+    if (::close(m_sock) < 0) {
+        cerr << "Errore nella chiusura del socket: " << strerror(errno) << endl;
+        return false;
+    }
+
+    m_sock = -1; // reset socket descriptor
+    return true;
+}
+
+void Socket::setNonBlocking(const bool b) {
+    int opts = fcntl(m_sock, F_GETFL); // Get the current options
 
     if (opts < 0) {
+        cerr << "Errore nel recupero delle opzioni del socket: " << strerror(errno) << endl;
         return;
     }
 
     if (b) {
-        opts = (opts | O_NONBLOCK);
+        opts |= O_NONBLOCK; // Set the O_NONBLOCK flag
     } else {
-        opts = (opts & ~O_NONBLOCK);
+        opts &= ~O_NONBLOCK; // Clear the O_NONBLOCK flag
     }
 
-    fcntl(m_sock, F_SETFL, opts);
-}*/
+    if (fcntl(m_sock, F_SETFL, opts) < 0) { // Apply the new options
+        cerr << "Errore nell'impostazione delle opzioni del socket: " << strerror(errno) << endl;
+    }
+}
