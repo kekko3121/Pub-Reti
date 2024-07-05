@@ -17,26 +17,24 @@ int main() {
 
     std::cout << "Connessione al server riuscita!" << std::endl;
 
-    while (true) {
-        // Inviare un messaggio al server
-        std::string message = "Ciao server!";
-        if (!clientSocket.send(message)) {
-            std::cerr << "Errore nell'invio del messaggio al server!" << std::endl;
-            break; // Esci dal loop se c'è un errore nell'invio
-        }
-
-        std::cout << "Messaggio inviato al server!" << std::endl;
-
-        // Ricevere la risposta dal server
-        std::string response;
-        int status = clientSocket.receive(response);
-        if (status > 0) {
-            std::cout << "Risposta dal server: " << response << std::endl;
-        } else {
-            std::cerr << "Errore nella ricezione della risposta dal server!" << std::endl;
-            break; // Esci dal loop se c'è un errore nella ricezione
-        }
+    // Ricevere la risposta dal server
+    std::string message;
+    if (clientSocket.receive(message) <= 0) {
+        std::cerr << "Errore nella ricezione del messaggio!" << std::endl;
     }
+
+    std::cout << "Messaggio ricevuto: " << message << std::endl;
+
+    // Inviare un messaggio al server
+    if (!clientSocket.send("Ciao server!")) {
+        std::cerr << "Errore nell'invio del messaggio al server!" << std::endl;
+    }
+
+    std::cout << "Messaggio inviato al server!" << std::endl;
+    
+    /*while (true) {
+
+    }*/
 
     return 0;
 }

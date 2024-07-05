@@ -148,15 +148,15 @@ int Socket::receive(string& message) const { // riceve un messaggio
     message.clear(); // pulisce il messaggio
     memset(buffer, 0, 1024); // inizializza il buffer a 0
 
-    int status = ::recv(m_sock, buffer, 1024, 0); // riceve il messaggio attraverso il socket
-    if (status == -1) { // se la ricezione del messaggio fallisce
+    int status = ::recv(m_sock, buffer, sizeof(buffer), 0); // riceve il messaggio attraverso il socket
+    if (status < 0) { // se la ricezione del messaggio fallisce
         cerr << "Errore nella ricezione del messaggio: " << strerror(errno) << endl;
         return -1;
     } else if (status == 0) { // se la connessione è stata chiusa
         cerr << "Connessione chiusa dal peer." << endl;
         return 0;
     } else { // se la ricezione del messaggio ha successo
-        message = buffer; // memorizza il messaggio nel buffer
+        message.assign(buffer, status); // assegna il messaggio del buffer
         return status; // ritorna la lunghezza del messaggio
     }
 }

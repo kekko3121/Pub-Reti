@@ -3,6 +3,7 @@
 #include <signal.h>
 #include "Pub.h"
 #include "../Socket/Socket.h"
+using namespace std;
 
 // Global socket pointer for signal handling
 Socket* serverSocketPtr = nullptr;
@@ -28,50 +29,52 @@ int main() {
 
     // Create the server socket
     if (!serverSocket.create()) {
-        std::cerr << "Errore nella creazione del socket!" << std::endl;
+        cerr << "Errore nella creazione del socket!" << endl;
         return -1;
     }
 
     // Bind the socket to a port (e.g., 25564)
     if (!serverSocket.bind(25564)) {
-        std::cerr << "Errore nell'associazione del socket alla porta!" << std::endl;
+        cerr << "Errore nell'associazione del socket alla porta!" << endl;
         return -1;
     }
 
     // Put the socket in listening mode
     if (!serverSocket.listen()) {
-        std::cerr << "Errore nel mettere il socket in ascolto!" << std::endl;
+        cerr << "Errore nel mettere il socket in ascolto!" << endl;
         return -1;
     }
 
-    std::cout << "Il pub è aperto in attesa di clienti" << std::endl;
+    cout << "Il pub è aperto in attesa di clienti" << endl;
 
-    while (true) { // Stay in listening mode to accept multiple connections
+    while (true) {
+
         // Accept an incoming connection
-        Socket newSocket;
-        if (!serverSocket.accept(newSocket)) {
-            std::cerr << "Errore nell'accettare la connessione!" << std::endl;
-            continue;
+        Socket clientSocket;
+        if (!serverSocket.accept(clientSocket)) {
+            cerr << "Errore nell'accettare la connessione!" << endl;
+            return -1;
         }
 
-        std::cout << "Connessione accettata!" << std::endl;
+        cout << "Connessione accettata!" << endl;
 
-        // Receive a message from the client
-        std::string message;
-        if (newSocket.receive(message) > 0) {
-            std::cout << "Messaggio ricevuto: " << message << std::endl;
+        while (true){
+            // Receive a message from the client
+            string message;
 
-            // Handle the message, e.g., process client requests, manage orders, etc.
-            // For now, just send a response
-            std::string response = "Messaggio ricevuto: " + message;
-            if (!newSocket.send(response)) {
-                std::cerr << "Errore nell'invio della risposta!" << std::endl;
+            if (clientSocket.receive(message) <= 0) {
+                break; // Connessione chiusa o errore
             }
-        } else {
-            std::cerr << "Errore nella ricezione del messaggio!" << std::endl;
+
+            cout << "Messaggio ricevuto: " << message << endl;
+
+            /*if (!clientSocket.send("Messaggio ricevuto da te: " + message)) {
+                    cerr << "Errore nell'invio della risposta!" << endl;
+                    break; // Errore nell'invio
+            }*/
         }
     }
-
+    
     return 0;
 }
 
@@ -79,7 +82,7 @@ int main() {
 void signalHandler(int signum) {
     if (serverSocketPtr != nullptr) {
         serverSocketPtr->close();
-        std::cout << "Server socket closed successfully." << std::endl;
+        cout << "Server socket closed successfully." << endl;
     }
     exit(signum);
 }
