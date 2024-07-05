@@ -1,36 +1,42 @@
+#include <iostream>
+#include <cstring>
 #include "../Socket/Socket.h"
+using namespace std;
 
 int main() {
-    Socket clientSocket;
+    Socket clientSocket; // dichiarazione della socket client
 
-    // Creare il socket
+    // Definizione delle variabili
+    int serverPort = 25562; // Porta su cui il server è in ascolto
+    string remoteHost = "127.0.0.1"; // Indirizzo IP del server remoto
+
+    // Creazione della socket server
     if (!clientSocket.create()) {
-        std::cerr << "Errore nella creazione del socket del client!" << std::endl;
+        cerr << "Errore nella creazione del socket del client!" << endl;
         return 1;
     }
 
-    // Connettersi al server
-    if (!clientSocket.connect("127.0.0.1", 25562)) {
-        std::cerr << "Errore nella connessione al server!" << std::endl;
+    // Connessione al server remoto (Cameriere)
+    if (!clientSocket.connect(remoteHost, serverPort)) {
+        cerr << "Errore nella connessione al Cameriere!" << endl;
         return 1;
     }
 
-    std::cout << "Connessione al server riuscita!" << std::endl;
+    cout << "Connessione al server riuscita!" << endl; // Stampa di successo
 
-    // Ricevere la risposta dal server
-    std::string message;
-    if (clientSocket.receive(message) <= 0) {
-        std::cerr << "Errore nella ricezione del messaggio!" << std::endl;
+    string message; // memorizzo i messaggi che arrivano dal server
+    if (clientSocket.receive(message) <= 0) { // memorizzo i messaggi che arrivano dal client
+        cerr << "Errore nella ricezione del messaggio!" << endl;
     }
 
-    std::cout << "Messaggio ricevuto: " << message << std::endl;
+    cout << "Messaggio ricevuto: " << message << endl; // Stampa il messaggio ricevuto
 
     // Inviare un messaggio al server
-    if (!clientSocket.send("Ciao server!")) {
-        std::cerr << "Errore nell'invio del messaggio al server!" << std::endl;
+    if (!clientSocket.send("Ciao Cameriere!")) {
+        cerr << "Errore nell'invio del messaggio al Cameriere!" << endl;
     }
 
-    std::cout << "Messaggio inviato al server!" << std::endl;
+    cout << "Messaggio inviato al server!" << endl;
     
     /*while (true) {
 

@@ -5,41 +5,42 @@
 #include "../Socket/Socket.h"
 using namespace std;
 
-// Global socket pointer for signal handling
+// Socket globale per il signal handling
 Socket* serverSocketPtr = nullptr;
 
-// Signal handler for clean shutdown
+// Signal handler per l'interruzione del programma
 void signalHandler(int);
 
 int main() {
-    Socket serverSocket;
+    Socket serverSocket; //dichiarazione della socket server
 
-    // Initialize Pub with 5 tables and max 20 seats
+    // Inizializzazione del pub con 5 tavoli e un massimo di 20 posti
     Pub pub(20, 5);
 
+    //aggiunta dei tavoli
     pub.aggiungiTavolo(4);
     pub.aggiungiTavolo(6);
     pub.aggiungiTavolo(2);
     pub.aggiungiTavolo(5);
     pub.aggiungiTavolo(2);
 
-    // Set up signal handler
+    // Registrazione del signal handler
     signal(SIGINT, signalHandler);
     serverSocketPtr = &serverSocket;
 
-    // Create the server socket
+    // Creazione della socket server
     if (!serverSocket.create()) {
         cerr << "Errore nella creazione del socket!" << endl;
         return -1;
     }
 
-    // Bind the socket to a port (e.g., 25564)
+    // Costruisce la socket con la porta 25564
     if (!serverSocket.bind(25564)) {
         cerr << "Errore nell'associazione del socket alla porta!" << endl;
         return -1;
     }
 
-    // Put the socket in listening mode
+    // Imposta la socket in ascolto
     if (!serverSocket.listen()) {
         cerr << "Errore nel mettere il socket in ascolto!" << endl;
         return -1;
@@ -47,23 +48,23 @@ int main() {
 
     cout << "Il pub è aperto in attesa di clienti" << endl;
 
-    while (true) {
+    while (true) { // ciclo per accettare più richieste client
 
-        // Accept an incoming connection
-        Socket clientSocket;
-        if (!serverSocket.accept(clientSocket)) {
+        Socket clientSocket; //socket per acquisire le informazioni del client
+
+        if (!serverSocket.accept(clientSocket)) { // accetta la connessione del client
             cerr << "Errore nell'accettare la connessione!" << endl;
             return -1;
         }
 
-        cout << "Connessione accettata!" << endl;
+        cout << "Connessione accettata!" << endl; // stampa un messaggio di successo della connessione con il client
 
         while (true){
-            // Receive a message from the client
-            string message;
 
-            if (clientSocket.receive(message) <= 0) {
-                break; // Connessione chiusa o errore
+            string message; // memorizzo i messaggi che arrivano dal client
+
+            if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
+                break; // Connessione chiusa o errore ed esco dal ciclo
             }
 
             cout << "Messaggio ricevuto: " << message << endl;
@@ -73,16 +74,20 @@ int main() {
                     break; // Errore nell'invio
             }*/
         }
+
+        clientSocket.close(); //chiusura del socket client
     }
-    
+
+    serverSocket.close(); //chiusura del socket server
+
     return 0;
 }
 
-// Signal handler for clean shutdown
+// Signal handler per l'interruzione del programma
 void signalHandler(int signum) {
-    if (serverSocketPtr != nullptr) {
-        serverSocketPtr->close();
-        cout << "Server socket closed successfully." << endl;
+    if (serverSocketPtr != nullptr) { // se ho il contenuto della socket
+        serverSocketPtr->close(); //chiudo la socket
+        cout << "Server socket closed successfully." << endl; // Stampa di successo
     }
-    exit(signum);
+    exit(signum); // esco dal programma in base al codice passato
 }

@@ -2,61 +2,62 @@
 #include <unistd.h>
 #include <signal.h>
 
-// Global socket pointers for signal handling
+// Socket globale per il signal handling
 Socket* clientSocketPtr = nullptr;
 Socket* serverSocketPtr = nullptr;
 
-// Signal handler for clean shutdown
+// Signal handler per l'interruzione del programma
 void signalHandler(int);
-void serverProcess(Socket);
 
 int main() {
     // Definizione delle variabili
     int serverPort = 25562; // Porta su cui il server in ascolto
     string remoteHost = "127.0.0.1"; // Indirizzo IP del server remoto
     int remotePort = 25564; // Porta del server remoto
-    Socket serverSocket, remoteSocket; // Creazione dei socket per il collegamento
-    
+    Socket serverSocket, remoteSocket; // dichiarazione della socket server e client
+
+    // Creazione della socket server
     if (!serverSocket.create()) {
         cerr << "Errore nella creazione del socket server" << endl;
         return -1;
     }
 
-    // Bind del socket server alla porta specificata
+    // Costruisce la socket con la porta 25564
     if (!serverSocket.bind(serverPort)) {
         cerr << "Errore nel bind del socket server" << endl;
         return -1;
     }
 
-    // Mettere in ascolto il socket server
+    // Imposta la socket in ascolto
     if (!serverSocket.listen()) {
         cerr << "Errore nel mettere in ascolto il socket server" << endl;
         return -1;
     }
 
+    // Creazione della socket client
     if (!remoteSocket.create()) {
         cerr << "Errore nella creazione del socket server" << endl;
         return -1;
     }
 
-    // Connessione al server remoto
+    // Connessione al server remoto (Pub)
     if (!remoteSocket.connect(remoteHost, remotePort)) {
         cerr << "Errore nella connessione al server remoto: " << strerror(errno) << endl;
         return -1;
     }
 
-    cout << "Ho iniziato il turno nel Pub delle socket" << endl;
+    cout << "Ho iniziato il turno nel Pub delle socket" << endl; // Stampa di funzionamento della socket
 
     // Registrazione del signal handler
     signal(SIGINT, signalHandler);
-
-    // Set global pointers for signal handling
     serverSocketPtr = &serverSocket;
     clientSocketPtr = &remoteSocket;
 
     while (true) {
+
+        Socket clientSocket; //socket per acquisire le informazioni del client
+
         // Accetta una nuova connessione dal client
-        Socket clientSocket;
         if (!serverSocket.accept(clientSocket)) {
             cerr << "Errore nell'accettazione della connessione client" << endl;
             continue;
@@ -76,7 +77,7 @@ int main() {
                     break; // Errore nell'invio
                 }
 
-                string message;
+                string message; // memorizzo i messaggi che arrivano dal client
 
                 if (clientSocket.receive(message) <= 0) {
                     break; // Connessione chiusa o errore
@@ -93,7 +94,7 @@ int main() {
             // Chiude il socket client nel processo figlio
             clientSocket.close();
 
-            cout << "Il cliente ha abbandonato il pub" << endl;
+            cout << "Il cliente ha abbandonato il pub" << endl; // Stampa di successo
 
             exit(0); // Termina il processo figlio
         }

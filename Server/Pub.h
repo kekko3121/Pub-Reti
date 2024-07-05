@@ -73,8 +73,8 @@ int Pub::tavoloVuoto(){
 
 bool Pub::liberaPosto(int numeroTavolo) {
     for (Tavolo& tavolo : tavoli) {
-        if (tavolo.getNumeroTavolo() == numeroTavolo) {
-            tavolo.liberaPosto();
+        if (tavolo.getNumeroTavolo() == numeroTavolo) { //libera il posto al numero del tavolo
+            tavolo.liberaPosto(); //libera il posto al tavolo
             return true;
         }
     }
@@ -86,11 +86,12 @@ string Pub::preparaOrdine() {
 }
 
 int Pub::postiDisponibili() {
-    int posti = 0;
+    int posti = 0; //variabile per contare il numero di posti disponibili
     for (Tavolo& tavolo : tavoli) {
+        //calcola il numero di posti liberi in base al numero massimo di sedie disponibili
         posti += (tavolo.getMaxSedieTavolo() - tavolo.getNumeroClienti());
     }
-    return posti;
+    return posti; // ritorna il numero di posti disponibili
 }
 
 #endif // PUB_H

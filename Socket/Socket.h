@@ -146,7 +146,7 @@ int Socket::receive(string& message) const { // riceve un messaggio
 
     char buffer[1024]; // buffer per memorizzare il messaggio
     message.clear(); // pulisce il messaggio
-    memset(buffer, 0, 1024); // inizializza il buffer a 0
+    memset(buffer, 0, sizeof(buffer)); // inizializza il buffer a 0
 
     int status = ::recv(m_sock, buffer, sizeof(buffer), 0); // riceve il messaggio attraverso il socket
     if (status < 0) { // se la ricezione del messaggio fallisce
@@ -161,36 +161,38 @@ int Socket::receive(string& message) const { // riceve un messaggio
     }
 }
 
-bool Socket::close(){
-    if (m_sock == -1) { // se la creazione del socket fallisce
+bool Socket::close(){ //chiude la socket
+    if (m_sock == -1) {
         cerr << "Socket non valido. Nessun socket da chiudere." << endl;
-        return false; // ritorna false
+        return false;
     }
 
-    if (::close(m_sock) < 0) {
+    if (::close(m_sock) < 0) { //se la chiusura del socket fallisce
         cerr << "Errore nella chiusura del socket: " << strerror(errno) << endl;
         return false;
     }
 
-    m_sock = -1; // reset socket descriptor
+    m_sock = -1; // ripristina la descizione del socket
     return true;
 }
 
-void Socket::setNonBlocking(const bool b) {
-    int opts = fcntl(m_sock, F_GETFL); // Get the current options
+void Socket::setNonBlocking(const bool b) { // setta il socket in modalità non bloccante
+    int opts = fcntl(m_sock, F_GETFL); // prendo le opzioni del socket
 
-    if (opts < 0) {
+    if (opts < 0) { //se non riesco a leggere le impostazioni del socket
         cerr << "Errore nel recupero delle opzioni del socket: " << strerror(errno) << endl;
         return;
     }
 
-    if (b) {
-        opts |= O_NONBLOCK; // Set the O_NONBLOCK flag
-    } else {
-        opts &= ~O_NONBLOCK; // Clear the O_NONBLOCK flag
+    if (b) { // se b è vero 
+        opts |= O_NONBLOCK; // setta il socket in modalita non bloccante
+    }
+    
+    else {
+        opts &= ~O_NONBLOCK; // setta il socket in modalità bloccante
     }
 
-    if (fcntl(m_sock, F_SETFL, opts) < 0) { // Apply the new options
+    if (fcntl(m_sock, F_SETFL, opts) < 0) { // Applica le nuove impostazioni al socket
         cerr << "Errore nell'impostazione delle opzioni del socket: " << strerror(errno) << endl;
     }
 }
