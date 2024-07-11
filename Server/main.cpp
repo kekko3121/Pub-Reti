@@ -13,6 +13,7 @@ void signalHandler(int);
 
 int main() {
     Socket serverSocket; //dichiarazione della socket server
+    int numerotavolo;
 
     // Inizializzazione del pub con 5 tavoli e un massimo di 20 posti
     Pub pub(20, 5);
@@ -57,28 +58,56 @@ int main() {
             return -1;
         }
 
-        cout << "Connessione accettata!" << endl; // stampa un messaggio di successo della connessione con il client
+        cout << "Cameriere ha preso servizio nel Pub" << endl; // stampa un messaggio di successo della connessione con il client
 
-        while (true){
+        string message; // memorizzo i messaggi che arrivano dal client
 
-            string message; // memorizzo i messaggi che arrivano dal client
-
-            if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
-                break; // Connessione chiusa o errore ed esco dal ciclo
-            }
-
-            cout << "Messaggio ricevuto: " << message << endl;
-
-            /*if (!clientSocket.send("Messaggio ricevuto da te: " + message)) {
-                    cerr << "Errore nell'invio della risposta!" << endl;
-                    break; // Errore nell'invio
-            }*/
+        if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
+            break; // Connessione chiusa o errore ed esco dal ciclo
         }
 
-        clientSocket.close(); //chiusura del socket client
-    }
+        //verifica se ci sono posti disponibili per far accomodare il cliente
+        if(message.compare("Ci sono posti liberi?") == 0){
+            if(pub.postiDisponibili() > 0){
+                if (!clientSocket.send("Si")) {
+                    break; // Errore nell'invio
+                }
 
-    serverSocket.close(); //chiusura del socket server
+                message.clear();
+
+                clientSocket.receive(message);
+
+                //Se il cliente decide di accomodarsi ad un nuovo tavolo, si controlla se ci sono tavoli vuoti disponibili
+                if(message.compare("nuovo") == 0 && pub.tavoloVuoto() > 0){
+                    clientSocket.send(to_string(pub.tavoloVuoto())); //Invia il numero di tavolo al cliente
+                    pub.aggiungiCliente(pub.tavoloVuoto()); //aggiunge il cliente al tavolo
+                }
+                else if(message.compare("nuovo") == 0 && pub.tavoloVuoto() <= 0){ //Se non ci sono tavoli vuoti
+                    clientSocket.send("Non ci sono tavoli vuoti"); //avvisa il cameriere
+                }
+                //Se il cliente decide di accomodarsi in un tavolo già occupato ma con posti disponibili
+                else{
+                    try {
+                        int ntavolo = stoi(message); //conversione della stinga per recuperare il numero di tavolo richiesto
+                        if(pub.postoDisponibile(ntavolo)){ //Verifica se ci sono posti disponibili al tavolo richiesto
+                            pub.aggiungiCliente(ntavolo); //aggiunge il cliente al tavolo richiesto
+                            clientSocket.send(message); //invia un messaggio di avviso al cameriere di posti disponibili
+                        }
+                        else{ //Se non ci sono posti
+                            clientSocket.send("Tavolo inesistente o posti non disponibili"); //avvisa il camerire
+                        }
+                    //Eccezioni in caso di errore della conversione della stringa in intero
+                    } catch (const invalid_argument& e) { clientSocket.send("Messaggio non valido: non è un numero");}
+                }
+            }
+            //Avvisa il cameriere se nel Pub non ci sono posti
+            else{
+                if (!clientSocket.send("No")) {
+                    break; // Errore nell'invio
+                }
+            }
+        }
+    }
 
     return 0;
 }

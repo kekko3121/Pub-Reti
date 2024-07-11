@@ -1,6 +1,9 @@
-#include "../Socket/Socket.h"
+#include <iostream>
 #include <unistd.h>
 #include <signal.h>
+#include <string>
+#include "../Socket/Socket.h"
+using namespace std;
 
 // Socket globale per il signal handling
 Socket* clientSocketPtr = nullptr;
@@ -8,6 +11,7 @@ Socket* serverSocketPtr = nullptr;
 
 // Signal handler per l'interruzione del programma
 void signalHandler(int);
+void send_menu(Socket*);
 
 int main() {
     // Definizione delle variabili
@@ -63,36 +67,73 @@ int main() {
             continue;
         }
 
-        cout << "Connessione client accettata" << endl;
+        cout << "E entrato un cliente nel Pub" << endl;
 
         // Crea un processo figlio per gestire la connessione client
         pid_t pid = fork();
         if (pid == 0) { // Processo figlio
 
-            // Gestisce la comunicazione con il client
-            while (true) {
-
-                // Invia una risposta al client
-                if (!clientSocket.send("Ciao, Benvenuto nel pub socket")) {
-                    break; // Errore nell'invio
-                }
-
-                string message; // memorizzo i messaggi che arrivano dal client
-
-                if (clientSocket.receive(message) <= 0) {
-                    break; // Connessione chiusa o errore
-                }
-
-                cout << "Messaggio ricevuto dal client: " << message << endl;
-
-                // Invia una risposta al server
-                if (!remoteSocket.send("il cliente ha inviato: " + message)) {
-                    break; // Errore nell'invio
-                }
+        // Invia una risposta al client
+            if (!clientSocket.send("Ciao, Benvenuto nel pub socket")) {
+                break; // Errore nell'invio
             }
 
-            // Chiude il socket client nel processo figlio
-            clientSocket.close();
+            string message; // memorizzo i messaggi che arrivano dal client
+
+            if (clientSocket.receive(message) <= 0) {
+                break; // Connessione chiusa o errore
+            }
+
+            cout << "Cliente: " << message << endl;
+
+            // Se il cliente vuole accomodarsi
+            if(message.compare("Posso entrare?") == 0){
+                remoteSocket.send("Ci sono posti liberi?"); //chiedo al pub se ci sono posti disponibili
+
+                message.clear();
+
+                remoteSocket.receive(message);
+
+                if(message.compare("Si") == 0){ //Se ci sono posti
+                    //chiedo al cliente dove vuole accomodarsi
+                    clientSocket.send("Vuole accomodarsi a un nuovo tavolo o ad uno già prenotato? \n Scriva nuovo o numero tavolo");
+
+                    message.clear();
+
+                    clientSocket.receive(message);
+
+                    if(message.compare("nuovo") != 0){ //se decide di accomodarsi ad uno già occupato
+                        remoteSocket.send(message); //chiedo al pub un nuovo tavolo disponibili
+                    }
+
+                    else{ //se il cliente decide un nuovo tavolo 
+                        remoteSocket.send(message); //chiedo al pub posti disponibili al tavolo scelto
+                    }
+
+                    message.clear();
+                    remoteSocket.receive(message);
+                    
+                    bool success = false;
+
+                    try{ //eccezione se viene richiesto un tavolo non esistente
+                        int ntavolo = stoi(message); //memorizzo il numero di tavolo
+                        clientSocket.send("Accomodati al tavolo numero: " + message); //invio il numero di tavolo al cliente
+                        success = true;
+                    }
+                    catch (const invalid_argument& e) { 
+                        clientSocket.send("Tavolo non disponibile");
+                    }
+
+                    send_menu(&clientSocket);
+                    message.clear();
+                    clientSocket.receive(message);
+                    cout << message << endl;
+                }
+
+                else{ //Se non ci sono posti
+                    clientSocket.send("Mi dispiace ma non ci sono posti disponibili, Arrivederci"); //Avviso il cameriere
+                }
+            }
 
             cout << "Il cliente ha abbandonato il pub" << endl; // Stampa di successo
 
@@ -116,21 +157,43 @@ int main() {
         }
     }
 
-    // Chiude il socket server nel processo padre
-    serverSocket.close();
-    remoteSocket.close();
-
     return 0;
 }
 
+/*Funzione di controllo terminazione programma*/
 void signalHandler(int signum) {
+    //chiusura della socket client
     if (clientSocketPtr != nullptr) {
         clientSocketPtr->close();
         std::cout << "Client socket closed successfully." << std::endl;
     }
+    //chiusura della socket server
     if (serverSocketPtr != nullptr) {
         serverSocketPtr->close();
         std::cout << "Server socket closed successfully." << std::endl;
     }
-    exit(signum);
+    exit(signum); //uscita dal programma
+}
+
+void send_menu(Socket* client) {
+    string message = R"(Menu Pub
+                        1) Fourier small menu
+                        2) ADSL large menu
+                        3) Fibra medium menu
+                        4) ALOHA single hamburger
+                        5) Ethernet vegan menu small
+                        6) Berkeley Socket menu
+                        7) UDP BBQ menu
+                        8) DNS Nuggets x6
+                        9) DNS Nuggets x12
+                        10) LAN Wrap menu
+                        11) MultiplexingCola
+                        12) Gran P2P Bacon menu
+                        13) ISO Water
+                        14) RFID Fanta
+                        )";
+
+    if (!client->send(message)) {
+        cerr << "Errore nell'invio del menu al cliente" << endl;
+    }
 }
