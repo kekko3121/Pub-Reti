@@ -36,48 +36,57 @@ int main() {
     cout << "Cliente: Chiedo se è possibile accomodarsi..." << endl;
     sleep(2);
 
-    // Inviare un messaggio al server
-    // Inviare un messaggio al server
+    // Invia un messaggio al Cameriere per chiedere se possibile accomodarsi
     if (!clientSocket.send("Posso entrare?")) {
         cerr << "Errore nell'invio del messaggio al Cameriere!" << endl;
     }
 
     message.clear();
 
+    //Ricevo la risposta dal cameriere
     if (!clientSocket.receive(message)) {
         cerr << "Errore nella ricezione del messaggio!" << endl;
     }
 
     cout << "Cameriere: " << message << endl;
 
+    //Se non ci sono posti
     if (message.compare("Mi dispiace ma non ci sono posti disponibili, Arrivederci") == 0) {
-        clientSocket.close();
+        clientSocket.close(); //mi disconnetto
         exit(0);
     }
 
-    string sendmessage; // variabile per memorizzare il messaggio del client
+    string sendmessage; // variabile per memorizzare il messaggio del client per la scelta del tavolo
 
-    cin >> sendmessage;
+    cin >> sendmessage; //acquisisco il messaggio
 
-    if (!clientSocket.send(sendmessage)) {
+    if (!clientSocket.send(sendmessage)) { //invio il messaggio al camerire della scelta del tavolo
         cerr << "Errore nell'invio del messaggio!" << endl;
     }
 
     message.clear();
-    if (!clientSocket.receive(message)) {
+    if (!clientSocket.receive(message)) { //ricevo la risposta dal camerire per il tavolo scelto
         cerr << "Errore nella ricezione del messaggio!" << endl;
     }
 
-    cout << "Cameriere: " << message << endl;
+    cout << "Cameriere: " << message << endl; //Stampo il messaggio ricevuto
+
+    cout << "Cliente: Richiedo il menu al cameriere" << endl; //Stampa di avviso di richiesta menu
+
+    if (!clientSocket.send("Mi porti il menu")) { //Invio la richiesta del menu al cameriere
+        cerr << "Errore nell'invio del messaggio!" << endl;
+    }
+
+    sleep(5); //attesa di simulazione
 
     message.clear();
-    if (!clientSocket.receive(message)) {
+    if (!clientSocket.receive(message)) { //ricevo il menu
         cerr << "Errore nella ricezione del messaggio!" << endl;
     }
 
     cout << "Cameriere: " << message << endl;
 
-    // Se, invece, ci sono tavoli disponibili, procedo con l'ordinazione e la consegno al cameriere
+    //Effettuo l'ordinazione in base al menu consegnato
     cout << "Inserisci il numero della portata desiderata (da 1 a 14) e conferma con INVIO.\n Per terminare l'ordine, digita 'exit'." << endl;
 
     // Inizializza una stringa per contenere l'ordine
@@ -92,7 +101,7 @@ int main() {
 
         // Controlla se il cliente vuole concludere l'ordine
         if (scelta.compare("exit") == 0) {
-            // Se il cliente tenta di uscire senza aver ordinato nulla, chiedi di ordinare almeno una portata
+            // Se il cliente tenta di uscire senza aver ordinato nulla, chiedo di ordinare almeno una portata
             if (order.length() == 0) {
                 cout << "Devi ordinare almeno una portata." << endl;
                 continue; // Torna all'inizio del ciclo per richiedere la portata
@@ -100,13 +109,13 @@ int main() {
             break;
         }
 
-        if (!numero_valido(stoi(scelta), 1, 14)) {
+        if (!numero_valido(stoi(scelta), 1, 14)) { //verifica dei numeri nel range del menu
             cout << "Inserisci un numero compreso tra 1 e 14." << endl;
-            continue;
+            continue; //Torna all'inizio della richiesta della portata
         }
 
-        order += scelta;
-        order += " ";
+        order += scelta; //aggiungo la scelta all'ordine
+        order += " "; //aggiungo uno spazio per separare le ordinazioni
     } while (1);
 
     // Invio l'ordine al cameriere

@@ -11,6 +11,7 @@ Socket* serverSocketPtr = nullptr;
 
 // Signal handler per l'interruzione del programma
 void signalHandler(int);
+// Funzione per inviare il menu al cameriere 
 void send_menu(Socket*);
 
 int main() {
@@ -113,21 +114,26 @@ int main() {
                     message.clear();
                     remoteSocket.receive(message);
                     
-                    bool success = false;
-
+                    int ntavolo;
                     try{ //eccezione se viene richiesto un tavolo non esistente
-                        int ntavolo = stoi(message); //memorizzo il numero di tavolo
+                        ntavolo = stoi(message); //memorizzo il numero di tavolo
                         clientSocket.send("Accomodati al tavolo numero: " + message); //invio il numero di tavolo al cliente
-                        success = true;
                     }
-                    catch (const invalid_argument& e) { 
-                        clientSocket.send("Tavolo non disponibile");
+                    catch (const invalid_argument& e) {//se non esiste il numero di tavolo
+                        clientSocket.send("Tavolo non disponibile"); //avvisa il cliente
                     }
 
-                    send_menu(&clientSocket);
                     message.clear();
-                    clientSocket.receive(message);
-                    cout << message << endl;
+                    clientSocket.receive(message); //riceve la richiesta di consegna menu dal cliente
+
+                    if(message.compare("Mi porti il menu") == 0){ //Se il cliente richiede il menu
+                        cout << "Porto il menu al tavolo " << ntavolo << endl; //stampa di avviso
+                        send_menu(&clientSocket); //richiama la funzione per inviare il menu al cliente
+                        message.clear();
+                        clientSocket.receive(message); //riceve l'ordine effettuato dal cliente
+                        cout << "ho acquisito l'ordine e lo trasmetto al pub" << endl; //stampa di avviso
+                        remoteSocket.send("Prepara ordine " + to_string(ntavolo)); //invia l'ordinazione al Pub
+                    }
                 }
 
                 else{ //Se non ci sono posti
@@ -160,7 +166,7 @@ int main() {
     return 0;
 }
 
-/*Funzione di controllo terminazione programma*/
+/* Funzione di controllo terminazione programma */
 void signalHandler(int signum) {
     //chiusura della socket client
     if (clientSocketPtr != nullptr) {
@@ -175,7 +181,9 @@ void signalHandler(int signum) {
     exit(signum); //uscita dal programma
 }
 
+/* Funzione per inviare il menu al cameriere */
 void send_menu(Socket* client) {
+    // menu del Pub
     string message = R"(Menu Pub
                         1) Fourier small menu
                         2) ADSL large menu
@@ -193,7 +201,7 @@ void send_menu(Socket* client) {
                         14) RFID Fanta
                         )";
 
-    if (!client->send(message)) {
+    if (!client->send(message)) { //invia il menu al cliente
         cerr << "Errore nell'invio del menu al cliente" << endl;
     }
 }

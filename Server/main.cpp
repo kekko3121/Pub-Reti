@@ -99,6 +99,14 @@ int main() {
                     //Eccezioni in caso di errore della conversione della stringa in intero
                     } catch (const invalid_argument& e) { clientSocket.send("Messaggio non valido: non è un numero");}
                 }
+
+                message.clear();
+
+                clientSocket.receive(message); //Riceve l'ordine acquisito dal cameriere
+                
+                if(message.substr(0, 14).compare("Prepara ordine") == 0){ //Se il cameriere ha consegnato l'ordine
+                    pub.preparaOrdine(stoi(message.substr(15, 16))); //Prepara l'ordine per il tavolo indicato dal cameriere
+                }
             }
             //Avvisa il cameriere se nel Pub non ci sono posti
             else{

@@ -5,8 +5,8 @@
 #ifndef PUB_H
 #define PUB_H
 
+#include <iostream>
 #include <vector>
-#include <string>
 #include "Tavolo.h"
 using namespace std;
 
@@ -23,7 +23,7 @@ class Pub {
         bool aggiungiTavolo(int maxSedie); // metodo per aggiungere un tavolo nel locale
         bool postoDisponibile(int numeroTavolo); // metodo per verificare se ci sono posti nel tavolo scelto 
         bool aggiungiCliente(int numeroTavolo); // metodo per aggiungere il cliente al tavolo scelto
-        string preparaOrdine(); // metodo per preparare l'ordine del cliente
+        void preparaOrdine(int tavolo); // metodo per preparare l'ordine del cliente
         int tavoloVuoto(); //verifica se il tavolo è vuoto
         bool liberaPosto(int numeroTavolo); // metodo per liberare un posto al tavolo
         int postiDisponibili();
@@ -81,8 +81,10 @@ bool Pub::liberaPosto(int numeroTavolo) {
     return false;
 }
 
-string Pub::preparaOrdine() {
-    return "Sto preparando l'ordine";
+void Pub::preparaOrdine(int ntavolo) {
+    cout << "Sto preparando l'ordine del tavolo " << ntavolo << endl; //stampa per simulare l'ordine di preparazione
+    sleep (5); //finta attesa
+    cout << "Ordine pronto per essere consegnato al tavolo " << ntavolo << " dal cameriere" << endl; //stampa per simulare l'ordine pronto
 }
 
 int Pub::postiDisponibili() {
