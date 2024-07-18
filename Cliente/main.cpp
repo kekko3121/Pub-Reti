@@ -125,6 +125,18 @@ int main() {
         cout << "Hai consegnato il tuo ordine al cameriere, ora verrà consegnato al pub per la preparazione." << endl;
     }
 
+    message.clear();
+
+    if (!clientSocket.receive(message)) { //ricevo il menu
+        cerr << "Errore nella ricezione del messaggio!" << endl;
+    }
+
+    cout << "Cameriere: " << message << endl;
+
+    if(!clientSocket.send("Grazie mille e arrivederci")){
+        cerr << "Errore nell'invio del ringraziamento al cameriere!" << endl;
+    }
+
     return 0;
 }
 

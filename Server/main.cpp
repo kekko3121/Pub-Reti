@@ -106,6 +106,20 @@ int main() {
                 
                 if(message.substr(0, 14).compare("Prepara ordine") == 0){ //Se il cameriere ha consegnato l'ordine
                     pub.preparaOrdine(stoi(message.substr(15, 16))); //Prepara l'ordine per il tavolo indicato dal cameriere
+                    //Il pub avvisa il camerire che può servire l'ordine
+                    clientSocket.send("Ordine pronto al tavono n: " + message.substr(15, 16));
+                }
+
+                message.clear();
+                
+                //Il Cameriere avvisa che il cliente ha lasciato il locale
+                clientSocket.receive(message);
+
+                cout << "Cameriere: " << message << endl; //Stampa il messaggio del cameriere
+
+                if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ //Se il cliente se ne è andato
+                    pub.liberaPosto(stoi(message.substr(33))); //libero il posto al numero di tavolo
+                    cout << "Si è liberato il posto al tavolo n: "  << message.substr(33) << endl; //stampo un avviso
                 }
             }
             //Avvisa il cameriere se nel Pub non ci sono posti

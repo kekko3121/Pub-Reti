@@ -61,6 +61,7 @@ int main() {
     while (true) {
 
         Socket clientSocket; //socket per acquisire le informazioni del client
+        int ntavolo;
 
         // Accetta una nuova connessione dal client
         if (!serverSocket.accept(clientSocket)) {
@@ -113,8 +114,7 @@ int main() {
 
                     message.clear();
                     remoteSocket.receive(message);
-                    
-                    int ntavolo;
+
                     try{ //eccezione se viene richiesto un tavolo non esistente
                         ntavolo = stoi(message); //memorizzo il numero di tavolo
                         clientSocket.send("Accomodati al tavolo numero: " + message); //invio il numero di tavolo al cliente
@@ -133,6 +133,19 @@ int main() {
                         clientSocket.receive(message); //riceve l'ordine effettuato dal cliente
                         cout << "ho acquisito l'ordine e lo trasmetto al pub" << endl; //stampa di avviso
                         remoteSocket.send("Prepara ordine " + to_string(ntavolo)); //invia l'ordinazione al Pub
+                        message.clear();
+                        remoteSocket.receive(message); //riceve il messaggio di ordine preparato
+                        cout << "Pub: " << message << endl; //Stampa il messaggio
+                        if(message.substr(0, 13).compare("Ordine pronto") == 0){ //Se l'ordine è pronto
+                            cout << "Ritiro il menu e lo consegno al tavolo" + ntavolo << endl; //viene ritirato
+                            clientSocket.send("Ordine pronto e consegnato"); //l'ordine viene consegnato al cliente
+                        }
+
+                        message.clear();
+
+                        clientSocket.receive(message); //il camerire riceve ringraziamenti dal cliente
+
+                        cout << "Cliente: " << message << endl; //Stampa il messaggio del cliente
                     }
                 }
 
@@ -142,6 +155,8 @@ int main() {
             }
 
             cout << "Il cliente ha abbandonato il pub" << endl; // Stampa di successo
+
+            remoteSocket.send("Cliente ha liberato il tavolo n: " + to_string(ntavolo));
 
             exit(0); // Termina il processo figlio
         }
