@@ -161,7 +161,7 @@ int Socket::receive(string& message) const { // riceve un messaggio
     }
 }
 
-bool Socket::close(){ //chiude la socket
+bool Socket::close() { //chiude la socket
     if (m_sock == -1) {
         cerr << "Socket non valido. Nessun socket da chiudere." << endl;
         return false;
@@ -172,7 +172,17 @@ bool Socket::close(){ //chiude la socket
         return false;
     }
 
-    m_sock = -1; // ripristina la descizione del socket
+    m_sock = -1; // Ripristina la descrizione del socket
+
+    // Controllare se ci sono stati errori specifici durante la chiusura
+    if (errno == EINTR) {
+        cerr << "Chiusura del socket interrotta da un segnale." << endl;
+    } else if (errno == EBADF) {
+        cerr << "Descrizione del socket non valida." << endl;
+    } else if (errno == EIO) {
+        cerr << "Errore I/O durante la chiusura del socket." << endl;
+    }
+
     return true;
 }
 
