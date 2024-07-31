@@ -43,15 +43,6 @@ bool Pub::aggiungiTavolo(int maxSedie) {
     return false;
 }
 
-bool Pub::postoDisponibile(int numeroTavolo) {
-    for (Tavolo& tavolo : tavoli) { //Scorro i tavoli
-        if (tavolo.getNumeroTavolo() == numeroTavolo && tavolo.postoDisponibile()) { //In base al numero di tavolo verifico se ho un posto disponibile
-            return true; // restituisce vero se c'è un postro
-        }
-    }
-    return false; // restituisce falso se non c'è un posto
-}
-
 bool Pub::aggiungiCliente(int numeroTavolo) {
     for (Tavolo& tavolo : tavoli) {
         if (tavolo.getNumeroTavolo() == numeroTavolo && tavolo.addCliente()) { //In base al numero di tavolo aggiungo il cliente

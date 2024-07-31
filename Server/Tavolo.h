@@ -44,7 +44,9 @@ bool Tavolo::postoDisponibile(){
 }
 
 void Tavolo::liberaPosto(){
-    clientiSeduti--; // rimuove il cliente decrementando il contatore
+    if(clientiSeduti > 0){
+        clientiSeduti--; // rimuove il cliente decrementando il contatore
+    }
 }
 
 int Tavolo::getNumeroTavolo(){
