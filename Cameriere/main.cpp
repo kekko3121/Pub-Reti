@@ -19,7 +19,7 @@ int main() {
     int serverPort = 25562; // Porta su cui il server in ascolto
     string remoteHost = "127.0.0.1"; // Indirizzo IP del server remoto
     int remotePort = 25564; // Porta del server remoto
-    Socket serverSocket, remoteSocket; // dichiarazione della socket server e client
+    Socket serverSocket; // dichiarazione della socket server e client
 
     // Creazione della socket server
     if (!serverSocket.create()) {
@@ -39,28 +39,16 @@ int main() {
         return -1;
     }
 
-    // Creazione della socket client
-    if (!remoteSocket.create()) {
-        cerr << "Errore nella creazione del socket server" << endl;
-        return -1;
-    }
-
-    // Connessione al server remoto (Pub)
-    if (!remoteSocket.connect(remoteHost, remotePort)) {
-        cerr << "Errore nella connessione al server remoto: " << strerror(errno) << endl;
-        return -1;
-    }
-
     cout << "Ho iniziato il turno nel Pub delle socket" << endl; // Stampa di funzionamento della socket
 
     // Registrazione del signal handler
     signal(SIGINT, signalHandler);
     serverSocketPtr = &serverSocket;
-    clientSocketPtr = &remoteSocket;
 
     while (true) {
 
-        Socket clientSocket; //socket per acquisire le informazioni del client
+        Socket clientSocket, remoteSocket; //socket per acquisire le informazioni del client
+        clientSocketPtr = &remoteSocket;
         int ntavolo;
 
         // Accetta una nuova connessione dal client
@@ -69,18 +57,36 @@ int main() {
             continue;
         }
 
+        if (!remoteSocket.create()) {
+            cerr << "Errore nella creazione del socket server" << endl;
+            return -1;
+        }
+
         cout << "E entrato un cliente nel Pub" << endl;
 
         // Crea un processo figlio per gestire la connessione client
         pid_t pid = fork();
-        if (pid == 0) { // Processo figlio
 
-        // Invia una risposta al client
+        if(pid < 0){
+            cerr << "Errore nella fork";
+            continue;
+        }
+
+        if (pid == 0) { // Processo figlio
+            string message; // memorizzo i messaggi che arrivano dal client
+            // Creazione della socket client per il server remoto
+
+            // Connessione al server remoto (Pub)
+            if (!remoteSocket.connect(remoteHost, remotePort)) {
+                cerr << "Errore nella connessione al server remoto: " << strerror(errno) << endl;
+                return -1;
+            }
+
+            // Invia una risposta al client
             if (!clientSocket.send("Ciao, Benvenuto nel pub socket")) {
                 break; // Errore nell'invio
             }
 
-            string message; // memorizzo i messaggi che arrivano dal client
 
             if (clientSocket.receive(message) <= 0) {
                 break; // Connessione chiusa o errore
@@ -121,6 +127,7 @@ int main() {
                     }
                     catch (const invalid_argument& e) {//se non esiste il numero di tavolo
                         clientSocket.send("Tavolo non disponibile"); //avvisa il cliente
+                        break;
                     }
 
                     message.clear();
@@ -137,7 +144,7 @@ int main() {
                         remoteSocket.receive(message); //riceve il messaggio di ordine preparato
                         cout << "Pub: " << message << endl; //Stampa il messaggio
                         if(message.substr(0, 13).compare("Ordine pronto") == 0){ //Se l'ordine è pronto
-                            cout << "Ritiro il menu e lo consegno al tavolo" + ntavolo << endl; //viene ritirato
+                            cout << " Ritiro il menu e lo consegno al tavolo" + ntavolo << endl; //viene ritirato
                             clientSocket.send("Ordine pronto e consegnato"); //l'ordine viene consegnato al cliente
                         }
 
@@ -146,11 +153,9 @@ int main() {
                         clientSocket.receive(message); //il camerire riceve ringraziamenti dal cliente
 
                         cout << "Cliente: " << message << endl; //Stampa il messaggio del cliente
-                    }
-                }
 
-                else{ //Se non ci sono posti
-                    clientSocket.send("Mi dispiace ma non ci sono posti disponibili, Arrivederci"); //Avviso il cameriere
+                        message.clear();
+                    }
                 }
             }
 
@@ -159,22 +164,6 @@ int main() {
             remoteSocket.send("Cliente ha liberato il tavolo n: " + to_string(ntavolo));
 
             exit(0); // Termina il processo figlio
-        }
-        
-        else if (pid > 0) { // Processo padre
-            // Continua ad accettare nuove connessioni client
-            continue;
-        }
-        
-        else { // Errore nella fork
-            cerr << "Errore nella creazione del processo figlio" << endl;
-            
-            // Chiude il descrittore del socket server nel processo figlio
-            if (!serverSocket.close()){
-                cerr << "Errore nella chiusura del socket server" << endl;
-            }
-
-            break;
         }
     }
 

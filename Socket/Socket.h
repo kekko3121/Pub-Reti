@@ -162,11 +162,6 @@ int Socket::receive(string& message) const { // riceve un messaggio
 }
 
 bool Socket::close() { //chiude la socket
-    if (m_sock == -1) {
-        cerr << "Socket non valido. Nessun socket da chiudere." << endl;
-        return false;
-    }
-
     if (::close(m_sock) < 0) { //se la chiusura del socket fallisce
         cerr << "Errore nella chiusura del socket: " << strerror(errno) << endl;
         return false;

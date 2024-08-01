@@ -26,7 +26,7 @@ class Pub {
         void preparaOrdine(int tavolo); // metodo per preparare l'ordine del cliente
         int tavoloVuoto(); //verifica se il tavolo è vuoto
         bool liberaPosto(int numeroTavolo); // metodo per liberare un posto al tavolo
-        int postiDisponibili();
+        int postiDisponibili(); // verifica se ci sono posti liberi nel Pub
 };
 
 Pub::Pub(int maxClienti, int maxTavoli) {
