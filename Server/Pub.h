@@ -6,7 +6,7 @@
 #define PUB_H
 
 #include <iostream>
-#include <vector>
+#include <map>
 #include "Tavolo.h"
 using namespace std;
 
@@ -15,9 +15,10 @@ class Pub {
 
         int maxClienti; // numero massimo di cliente che possono entrare nel locale
         int maxTavoli; // numero massimo di tavoli disponibili
-        vector<Tavolo> tavoli; // lista dei tavoli nel locale
+        map<int, Tavolo> tavoli; // lista dei tavoli nel locale
 
     public:
+
         //Creo un Pub con il numero massimo di clienti e di tavoli
         Pub(int maxClienti, int maxTavoli);
         bool aggiungiTavolo(int maxSedie); // metodo per aggiungere un tavolo nel locale
@@ -25,18 +26,17 @@ class Pub {
         bool aggiungiCliente(int numeroTavolo); // metodo per aggiungere il cliente al tavolo scelto
         void preparaOrdine(int tavolo); // metodo per preparare l'ordine del cliente
         int tavoloVuoto(); //verifica se il tavolo è vuoto
-        bool liberaPosto(int numeroTavolo); // metodo per liberare un posto al tavolo
+        void liberaPosto(int numeroTavolo); // metodo per liberare un posto al tavolo
         int postiDisponibili(); // verifica se ci sono posti liberi nel Pub
 };
 
-Pub::Pub(int maxClienti, int maxTavoli) {
-    this->maxClienti = maxClienti; //imposto il numero massimo di clienti
-    this->maxTavoli = maxTavoli; // imposto il numero massimo di tavoli
-}
+//Costruttore per inizializzare l'array di tavoli e impostare il numero massimo di clienti e il numero massimo di tavoli
+Pub::Pub(int maxClienti, int maxTavoli) : maxClienti(maxClienti), maxTavoli(maxTavoli) {}
 
 bool Pub::aggiungiTavolo(int maxSedie) {
     if (tavoli.size() < maxTavoli) { //Se non ho raggiunto il massimo di tavoli disponibili
-        tavoli.push_back(Tavolo(maxSedie, tavoli.size() + 1)); //aggiungo un nuovo tavolo
+        tavoli.insert(pair<int, Tavolo>(tavoli.size() + 1, Tavolo(maxSedie))); //aggiungo un nuovo tavolo
+        //incremento il numero di tavoli
         return true;
     }
 
@@ -44,32 +44,24 @@ bool Pub::aggiungiTavolo(int maxSedie) {
 }
 
 bool Pub::aggiungiCliente(int numeroTavolo) {
-    for (Tavolo& tavolo : tavoli) {
-        if (tavolo.getNumeroTavolo() == numeroTavolo && tavolo.addCliente()) { //In base al numero di tavolo aggiungo il cliente
-            return true; // restituisce vero se è andato a buon fine la procedura
-        }
+    if (tavoli.at(numeroTavolo).addCliente()) { //In base al numero di tavolo aggiungo il cliente
+        return true; // restituisce vero se è andato a buon fine la procedura
     }
     return false; // altrimenti restituisce falso per un errore
 }
 
 int Pub::tavoloVuoto(){
-    for(Tavolo& tavolo: tavoli){
-        if(tavolo.tavoloVuoto()){ //Se il tavolo è vuoto
-            return tavolo.getNumeroTavolo(); // restituisce il numero di tavolo
+    for(auto &x : tavoli){
+        if(x.second.tavoloVuoto()){ //Se il tavolo è vuoto
+            return x.first; // restituisce il numero di tavolo
         }
     }
 
     return -1;
 }
 
-bool Pub::liberaPosto(int numeroTavolo) {
-    for (Tavolo& tavolo : tavoli) {
-        if (tavolo.getNumeroTavolo() == numeroTavolo) { //libera il posto al numero del tavolo
-            tavolo.liberaPosto(); //libera il posto al tavolo
-            return true;
-        }
-    }
-    return false;
+void Pub::liberaPosto(int numeroTavolo) {
+        tavoli.at(numeroTavolo).liberaPosto(); //libera il posto al numero del tavolo
 }
 
 void Pub::preparaOrdine(int ntavolo) {
@@ -80,9 +72,9 @@ void Pub::preparaOrdine(int ntavolo) {
 
 int Pub::postiDisponibili() {
     int posti = 0; //variabile per contare il numero di posti disponibili
-    for (Tavolo& tavolo : tavoli) {
+    for (auto &x : tavoli) {
         //calcola il numero di posti liberi in base al numero massimo di sedie disponibili
-        posti += (tavolo.getMaxSedieTavolo() - tavolo.getNumeroClienti());
+        posti += (x.second.getMaxSedieTavolo() - x.second.getNumeroClienti());
     }
     return posti; // ritorna il numero di posti disponibili
 }
