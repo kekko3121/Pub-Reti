@@ -5,6 +5,7 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <semaphore.h>
 #include "Pub.h"
 #include "../Socket/Socket.h"
 using namespace std;
@@ -12,28 +13,43 @@ using namespace std;
 // Socket globale per il signal handling
 Socket* serverSocketPtr = nullptr;
 Pub* pub = nullptr; // Puntatore alla classe Pub per la memoria condivisa
+int* clientiSeduti = nullptr; // Memoria condivisa per il contatore clientiSeduti
 
 // Signal handler per l'interruzione del programma
 void signalHandler(int);
 
 int main() {
     int shmid; // Identificatore della memoria condivisa
+    int clientiShmid; // Identificatore per la memoria condivisa dei contatori clientiSeduti
     Socket serverSocket; //dichiarazione della socket server
+
 
     // Creazione/accesso alla memoria condivisa
     if ((shmid = shmget(IPC_PRIVATE, sizeof(Pub), IPC_CREAT | 0666)) < 0) {
-        perror("Errore durante la shmget");
+        perror("Errore durante la shmget per Pub");
         exit(EXIT_FAILURE);
     }
 
     // Attacco della memoria condivisa
     if ((pub = (Pub *)shmat(shmid, NULL, 0)) == (Pub *)-1) {
-        perror("Errore durante la shmat");
+        perror("Errore durante la shmat per Pub");
+        exit(EXIT_FAILURE);
+    }
+
+    // Creazione della memoria condivisa per i contatori clientiSeduti
+    if ((clientiShmid = shmget(IPC_PRIVATE, sizeof(int) * 5, IPC_CREAT | 0666)) < 0) {
+        perror("Errore durante la shmget per clientiSeduti");
+        exit(EXIT_FAILURE);
+    }
+
+    // Attacco della memoria condivisa per i contatori clientiSeduti
+    if ((clientiSeduti = (int*)shmat(clientiShmid, NULL, 0)) == (int*)-1) {
+        perror("Errore durante la shmat per clientiSeduti");
         exit(EXIT_FAILURE);
     }
 
     // Inizializzazione del pub con 5 tavoli e un massimo di 20 posti
-    new (pub) Pub(20, 5);
+    new (pub) Pub(20, 5, clientiSeduti);
 
     //aggiunta dei tavoli
     pub->aggiungiTavolo(4);
@@ -75,7 +91,7 @@ int main() {
             return -1;
         }
 
-        cout << "Il cameriere sta servendo un" << endl; // stampa un messaggio di successo della connessione con il client
+        cout << "Il cameriere sta servendo un Cliente" << endl; // stampa un messaggio di successo della connessione con il client
 
         // Crea un processo figlio per gestire la connessione client
         pid_t pid = fork();
@@ -86,6 +102,7 @@ int main() {
         }
 
         if (pid == 0) { // Processo figlio
+
             string message; // memorizzo i messaggi che arrivano dal client
 
             if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
@@ -106,13 +123,19 @@ int main() {
                     }
 
                     //Se il cliente decide di accomodarsi ad un nuovo tavolo, si controlla se ci sono tavoli vuoti disponibili
-                    if(message.compare("nuovo") == 0 && pub->tavoloVuoto() > 0){
-                        clientSocket.send(to_string(pub->tavoloVuoto())); //Invia il numero di tavolo al cliente
-                        pub->aggiungiCliente(pub->tavoloVuoto()); //aggiunge il cliente al tavolo
-                    }
-                    else if(message.compare("nuovo") == 0 && pub->tavoloVuoto() <= 0){ //Se non ci sono tavoli vuoti
-                        clientSocket.send("Non ci sono tavoli vuoti"); //avvisa il cameriere
-                        break;
+                    if (message.compare("nuovo") == 0) {
+                        int nuovoTavolo = pub->tavoloVuoto(); // memorizzo il numero di tavolo vuoto
+                        if (nuovoTavolo > 0) { //Verifico se ci sono tavoli vuoti disponibili
+                            if (pub->aggiungiCliente(nuovoTavolo)) { // Aggiungo il cliente al nuovo tavolo
+                                cout << "Cliente aggiunto al tavolo nuovo: " << nuovoTavolo << endl;
+                                clientSocket.send(to_string(nuovoTavolo)); // Invio il numero di tavolo al cameriere
+                            } else {
+                                cerr << "Errore: non è stato possibile aggiungere il cliente al tavolo nuovo: " << nuovoTavolo << endl;
+                            }
+                        } else {
+                            clientSocket.send("Non ci sono tavoli vuoti"); // Avviso che non ci sono tavoli vuoti disponibili
+                            break;
+                        }
                     }
                     //Se il cliente decide di accomodarsi in un tavolo già occupato ma con posti disponibili
                     else{
@@ -130,7 +153,6 @@ int main() {
                             break;
                         }
                     }
-
 
                     message.clear();
 
@@ -153,10 +175,10 @@ int main() {
 
                     message.clear();
 
-                    if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ //Se il cliente se ne è andato
+                    /*if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ //Se il cliente se ne è andato
                         pub->liberaPosto(stoi(message.substr(33))); //libero il posto al numero di tavolo
                         cout << "Si è liberato il posto al tavolo n: "  << message.substr(33) << endl; //stampo un avviso
-                    }
+                    }*/
                 }
                 //Avvisa il cameriere se nel Pub non ci sono posti
                 else{
@@ -166,6 +188,7 @@ int main() {
                 }
             }
 
+            shmdt(pub); // Detach shared memory in child process
             serverSocket.close();
             exit(0); // Termina il processo figlio
         }
