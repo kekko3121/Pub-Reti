@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdlib>
 #include <string>
 #include <signal.h>
 #include <sys/ipc.h>
@@ -20,7 +21,7 @@ void signalHandler(int);
 
 int main() {
     int shmid; // Identificatore della memoria condivisa
-    int clientiShmid; // Identificatore per la memoria condivisa dei contatori clientiSeduti
+    int shmidClienti;
     Socket serverSocket; //dichiarazione della socket server
 
 
@@ -36,14 +37,14 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    // Creazione della memoria condivisa per i contatori clientiSeduti
-    if ((clientiShmid = shmget(IPC_PRIVATE, sizeof(int) * 5, IPC_CREAT | 0666)) < 0) {
+    // Creazione/accesso alla memoria condivisa per i contatori clientiSeduti
+    if ((shmidClienti = shmget(IPC_PRIVATE, sizeof(int) * 5, IPC_CREAT | 0666)) < 0) { // 5 perché hai 5 tavoli
         perror("Errore durante la shmget per clientiSeduti");
         exit(EXIT_FAILURE);
     }
 
     // Attacco della memoria condivisa per i contatori clientiSeduti
-    if ((clientiSeduti = (int*)shmat(clientiShmid, NULL, 0)) == (int*)-1) {
+    if ((clientiSeduti = (int*)shmat(shmidClienti, NULL, 0)) == (int*)-1) {
         perror("Errore durante la shmat per clientiSeduti");
         exit(EXIT_FAILURE);
     }
@@ -106,20 +107,20 @@ int main() {
             string message; // memorizzo i messaggi che arrivano dal client
 
             if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
-                break; // Connessione chiusa o errore ed esco dal ciclo
+                exit(1); // Connessione chiusa o errore ed esco dal ciclo
             }
 
             //verifica se ci sono posti disponibili per far accomodare il cliente
             if(message.compare("Ci sono posti liberi?") == 0){
                 if(pub->postiDisponibili() > 0){
                     if (!clientSocket.send("Si")) {
-                        break; // Errore nell'invio
+                        exit(1); // Errore nell'invio
                     }
 
                     message.clear();
 
                     if (clientSocket.receive(message) <= 0) { //ricevo dal cameriere la scelta del tavolo 
-                        break;
+                        exit(1);
                     }
 
                     //Se il cliente decide di accomodarsi ad un nuovo tavolo, si controlla se ci sono tavoli vuoti disponibili
@@ -127,14 +128,15 @@ int main() {
                         int nuovoTavolo = pub->tavoloVuoto(); // memorizzo il numero di tavolo vuoto
                         if (nuovoTavolo > 0) { //Verifico se ci sono tavoli vuoti disponibili
                             if (pub->aggiungiCliente(nuovoTavolo)) { // Aggiungo il cliente al nuovo tavolo
-                                cout << "Cliente aggiunto al tavolo nuovo: " << nuovoTavolo << endl;
+                                cout << "Cliente aggiunto al tavolo: " << nuovoTavolo << endl;
                                 clientSocket.send(to_string(nuovoTavolo)); // Invio il numero di tavolo al cameriere
                             } else {
                                 cerr << "Errore: non è stato possibile aggiungere il cliente al tavolo nuovo: " << nuovoTavolo << endl;
+                                exit(1); // Termina il processo figlio
                             }
                         } else {
                             clientSocket.send("Non ci sono tavoli vuoti"); // Avviso che non ci sono tavoli vuoti disponibili
-                            break;
+                            exit(1); // Termina il processo figlio
                         }
                     }
                     //Se il cliente decide di accomodarsi in un tavolo già occupato ma con posti disponibili
@@ -142,6 +144,7 @@ int main() {
                         try {
                             int ntavolo = stoi(message); //conversione della stinga per recuperare il numero di tavolo richiesto
                             if(pub->aggiungiCliente(ntavolo)){ //Aggiunge il cliente al tavolo se ci sono posti
+                                cout << "Cliente aggiunto al tavolo: " << ntavolo << endl;
                                 clientSocket.send(message); //invia un messaggio di avviso al cameriere di posti disponibili
                             }
                             else{ //Se non ci sono posti
@@ -150,14 +153,14 @@ int main() {
                         //Eccezioni in caso di errore della conversione della stringa in intero
                         } catch (const invalid_argument& e) { 
                             clientSocket.send("Messaggio non valido: non è un numero");
-                            break;
+                            exit(1);;
                         }
                     }
 
                     message.clear();
 
                     if (clientSocket.receive(message) <= 0) { // Ricevo l'ordine dal cameriere
-                        break;
+                        exit(1);;
                     }
                     
                     if(message.substr(0, 14).compare("Prepara ordine") == 0){ //Se il cameriere ha consegnato l'ordine
@@ -167,28 +170,28 @@ int main() {
                     }
 
                     message.clear();
-                    
-                    //Il Cameriere avvisa che il cliente ha lasciato il locale
-                    clientSocket.receive(message);
-
-                    cout << "Cameriere: " << message << endl; //Stampa il messaggio del cameriere
-
-                    message.clear();
-
-                    /*if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ //Se il cliente se ne è andato
-                        pub->liberaPosto(stoi(message.substr(33))); //libero il posto al numero di tavolo
-                        cout << "Si è liberato il posto al tavolo n: "  << message.substr(33) << endl; //stampo un avviso
-                    }*/
                 }
                 //Avvisa il cameriere se nel Pub non ci sono posti
                 else{
                     if (!clientSocket.send("No")) {
-                        break; // Errore nell'invio
+                        exit(1); // Errore nell'invio
                     }
                 }
             }
 
-            shmdt(pub); // Detach shared memory in child process
+            message.clear();
+
+            //Il Cameriere avvisa che il cliente ha lasciato il locale
+            clientSocket.receive(message);
+
+            cout << "Cameriere: " << message << endl; //Stampa il messaggio del cameriere
+
+            message.clear();
+
+            if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ //Se il cliente se ne è andato
+                pub->liberaPosto(stoi(message.substr(33))); //libero il posto al numero di tavolo
+                cout << "Si è liberato il posto al tavolo n: "  << message.substr(33) << endl; //stampo un avviso
+            }
             serverSocket.close();
             exit(0); // Termina il processo figlio
         }

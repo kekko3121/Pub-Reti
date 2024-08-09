@@ -1,12 +1,21 @@
 #include <iostream>
+#include <cstdlib>
 #include <string>
+#include <signal.h>
 #include "../Socket/Socket.h"
 using namespace std;
 
+//funzione per verificare se il range del numero è valido
 bool numero_valido(int num, int min, int max);
+// Signal handler per l'interruzione del programma
+void signalHandler(int);
+
+// Socket globale per il signal handling
+Socket* clientSocketPtr = nullptr;
 
 int main() {
     Socket clientSocket; // dichiarazione della socket client
+    string sendmessage; // variabile per memorizzare il messaggio del client per la scelta del tavolo
 
     // Definizione delle variabili
     int serverPort = 25562; // Porta su cui il server è in ascolto
@@ -24,6 +33,10 @@ int main() {
         return 1;
     }
 
+    // Registrazione del signal handler
+    signal(SIGINT, signalHandler);
+    clientSocketPtr = &clientSocket;
+
     cout << "Sono entrato nel pub e mi sta servendo un cameriere" << endl; // Stampa di successo
 
     string message; // memorizzo i messaggi che arrivano dal server
@@ -39,13 +52,15 @@ int main() {
     // Invia un messaggio al Cameriere per chiedere se possibile accomodarsi
     if (!clientSocket.send("Posso entrare?")) {
         cerr << "Errore nell'invio del messaggio al Cameriere!" << endl;
+        exit(0);
     }
 
     message.clear();
 
     //Ricevo la risposta dal cameriere
-    if (!clientSocket.receive(message)) {
+    if (clientSocket.receive(message) <= 0) {
         cerr << "Errore nella ricezione del messaggio!" << endl;
+        exit(0);
     }
 
     cout << "Cameriere: " << message << endl;
@@ -56,32 +71,60 @@ int main() {
         exit(0);
     }
 
-    string sendmessage; // variabile per memorizzare il messaggio del client per la scelta del tavolo
+    bool valid = false;
 
-    cin >> sendmessage; //acquisisco il messaggio
+    do {
+        cin >> sendmessage; // Take input for the choice
+
+        // Check if the input is the string "nuovo"
+        if (sendmessage == "nuovo") {
+            valid = true;
+        } 
+        // Check if the input is a valid table number
+        else {
+            try {
+                // Try to convert the input string to an integer
+                int number = stoi(sendmessage);
+                valid = true;  // If stoi succeeds, the input is valid
+            } catch (invalid_argument&) {
+                // If conversion fails, it's not a valid number
+                cout << "Inserisci 'nuovo' o un numero di tavolo valido" << endl;
+            }
+        }
+    } while (!valid);
+    
 
     if (!clientSocket.send(sendmessage)) { //invio il messaggio al camerire della scelta del tavolo
         cerr << "Errore nell'invio del messaggio!" << endl;
+        exit(0);
     }
 
     message.clear();
-    if (!clientSocket.receive(message)) { //ricevo la risposta dal camerire per il tavolo scelto
+    if (clientSocket.receive(message) <= 0) { //ricevo la risposta dal camerire per il tavolo scelto
         cerr << "Errore nella ricezione del messaggio!" << endl;
+        exit(0);
     }
 
     cout << "Cameriere: " << message << endl; //Stampo il messaggio ricevuto
+
+    if(message.compare("Tavolo non disponibile") == 0){ //Se il tavolo scelto non è disponibile abbandono il Pub
+        clientSocket.close(); //mi disconnetto
+        exit(0);
+    }
 
     cout << "Cliente: Richiedo il menu al cameriere" << endl; //Stampa di avviso di richiesta menu
 
     if (!clientSocket.send("Mi porti il menu")) { //Invio la richiesta del menu al cameriere
         cerr << "Errore nell'invio del messaggio!" << endl;
+        exit(0);
     }
 
     sleep(5); //attesa di simulazione
 
     message.clear();
-    if (!clientSocket.receive(message)) { //ricevo il menu
+    if (clientSocket.receive(message) <= 0 ) { //ricevo il menu
         cerr << "Errore nella ricezione del messaggio!" << endl;
+        exit(0);
     }
 
     cout << "Cameriere: " << message << endl;
@@ -121,20 +164,23 @@ int main() {
     // Invio l'ordine al cameriere
     if (!clientSocket.send(order)) {
         cerr << "Errore nell'invio dell'ordine al cameriere!" << endl;
+        exit(0);
     } else {
         cout << "Hai consegnato il tuo ordine al cameriere, ora verrà consegnato al pub per la preparazione." << endl;
     }
 
     message.clear();
 
-    if (!clientSocket.receive(message)) { //ricevo il menu
+    if (clientSocket.receive(message) <= 0 ) { //ricevo il menu
         cerr << "Errore nella ricezione del messaggio!" << endl;
+        exit(0);
     }
 
     cout << "Cameriere: " << message << endl;
 
     if(!clientSocket.send("Grazie mille e arrivederci")){
         cerr << "Errore nell'invio del ringraziamento al cameriere!" << endl;
+        exit(0);
     }
 
     return 0;
@@ -143,4 +189,15 @@ int main() {
 // Funzione per verificare se la portata inserita è corretta
 bool numero_valido(int num, int min, int max) {
     return num >= min && num <= max;
+}
+
+/* Funzione di controllo terminazione programma */
+void signalHandler(int signum) {
+    //chiusura della socket client
+    if (clientSocketPtr != nullptr) {
+        clientSocketPtr->close();
+        std::cout << "Client socket closed successfully." << std::endl;
+    }
+
+    exit(signum); //uscita dal programma
 }
