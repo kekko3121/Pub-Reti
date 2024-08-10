@@ -12,8 +12,12 @@ Socket* serverSocketPtr = nullptr;
 
 // Signal handler per l'interruzione del programma
 void signalHandler(int);
+
 // Funzione per inviare il menu al cameriere 
 void send_menu(Socket*);
+
+// Funzione del cameriere in caso di SIGNIT
+void termine_cameriere(Socket *, Socket *, string *);
 
 int main() {
     // Definizione delle variabili
@@ -80,19 +84,19 @@ int main() {
             // Connessione al server remoto (Pub)
             if (!remoteSocket.connect(remoteHost, remotePort)) {
                 cerr << "Errore nella connessione al server remoto: " << strerror(errno) << endl;
-                return -1;
+                exit(1);
             }
 
             // Invia una risposta al client
             if (!clientSocket.send("Ciao, Benvenuto nel pub socket")) {
                 cerr << "Errore nell'invio del messaggio al cliente!" << endl;
-                break; // Errore nell'invio
+                exit(1); // Errore nell'invio
             }
 
 
-            if (clientSocket.receive(message) <= 0) {
+            if (clientSocket.receive(message) <= 0) { // richiesta tavolo dal cliente
                 cerr << "Errore nella ricezione del messaggio dal cliente!" << endl;
-                break; // Connessione chiusa o errore
+                exit(1); // Connessione chiusa o errore
             }
 
             cout << "Cliente: " << message << endl;
@@ -101,63 +105,65 @@ int main() {
             if(message.compare("Posso entrare?") == 0){
                 if(!remoteSocket.send("Ci sono posti liberi?")){ //chiedo al pub se ci sono posti disponibili
                     cerr << "Errore nell'invio del messaggio al Pub!" << endl;
-                    break;
+                    exit(1);
                 }
 
                 message.clear();
 
                 if (remoteSocket.receive(message) <= 0) { //ricevo la risposta della richiesta dei posti
                     cerr << "Errore nella ricezione del messaggio dal Pub!" << endl;
-                    break; // Connessione chiusa o errore
+                    exit(1); // Connessione chiusa o errore
                 }
 
                 if(message.compare("Si") == 0){ //Se ci sono posti
                     //chiedo al cliente dove vuole accomodarsi
                     if(!clientSocket.send("Vuole accomodarsi a un nuovo tavolo o ad uno già prenotato? \n Scriva nuovo o numero tavolo")){
                         cerr << "Errore nell'invio del messaggio al cliente!" << endl;
-                        break;
+                        exit(1);
                     }
 
                     message.clear();
 
                     if (clientSocket.receive(message) <= 0) { ////Ricevo la richiesta del tavolo scelto
                         cerr << "Errore nella ricezione del messaggio dal Pub!" << endl;
-                        break;
+                        exit(1);
                     }
 
                     if(!remoteSocket.send(message)){ //Invio la richiesta del tavolo scelto al Pub
                         cerr << "Errore nell'invio del messaggio al Pub!" << endl;
-                        break;
+                        exit(1);
                     }
 
                     message.clear();
 
                     if (remoteSocket.receive(message) <= 0) { //Ricevo il numero di tavolo dal Pub
                         cerr << "Errore nella ricezione del messaggio dal Pub!" << endl;
-                        break; // Connessione chiusa o errore
+                        exit(1); // Connessione chiusa o errore
                     }
 
                     try{ //eccezione se viene richiesto un tavolo non esistente
                         ntavolo = stoi(message); //memorizzo il numero di tavolo
                         if(!clientSocket.send("Accomodati al tavolo numero: " + message)){ //invio il numero di tavolo al cliente
                             cerr << "Errore nell'invio del messaggio al cliente!" << endl;
-                            break;
+                            exit(1);
                         }
                     }
                     catch (const invalid_argument& e) {//se non esiste il numero di tavolo
                         if(!clientSocket.send("Tavolo non disponibile")){ //avvisa il cliente
                             cerr << "Errore nell'invio del messaggio al cliente!" << endl;
-                            break;
+                            exit(1);
                         }
-                        break;
+                        exit(1);
                     }
 
                     message.clear();
 
                     if (clientSocket.receive(message) <= 0) { //riceve la richiesta di consegna menu dal cliente
                         cerr << "Errore nella ricezione del messaggio dal client!" << endl;
-                        break; // Connessione chiusa o errore
+                        exit(1); // Connessione chiusa o errore
                     }
+
+                    termine_cameriere(&remoteSocket, &clientSocket, &message);
 
                     if(message.compare("Mi porti il menu") == 0){ //Se il cliente richiede il menu
 
@@ -169,21 +175,23 @@ int main() {
 
                         if (clientSocket.receive(message) <= 0) { //riceve l'ordine effettuato dal cliente
                             cerr << "Errore nella ricezione del messaggio dal client!" << endl;
-                            break; // Connessione chiusa o errore
+                            exit(1); // Connessione chiusa o errore
                         }
+
+                        termine_cameriere(&remoteSocket, &clientSocket, &message);
 
                         cout << "ho acquisito l'ordine e lo trasmetto al pub" << endl; //stampa di avviso
 
                         if(!remoteSocket.send("Prepara ordine " + to_string(ntavolo))){ //invia l'ordinazione al Pub
                             cerr << "Errore nell'invio del messaggio al Pub!" << endl;
-                            break;
+                            exit(1);
                         }
 
                         message.clear();
 
                         if (remoteSocket.receive(message) <= 0) { ///riceve il messaggio di ordine preparato
                             cerr << "Errore nella ricezione del messaggio dal client!" << endl;
-                            break; // Connessione chiusa o errore
+                            exit(1); // Connessione chiusa o errore
                         }
 
                         cout << "Pub: " << message << endl; //Stampa il messaggio
@@ -191,10 +199,10 @@ int main() {
                     }
 
                     if(message.substr(0, 13).compare("Ordine pronto") == 0){ //Se l'ordine è pronto
-                        cout << " Ritiro il menu e lo consegno al tavolo" + ntavolo << endl; //viene ritirato
+                        cout << "Ritiro il menu e lo consegno al tavolo" + ntavolo << endl; //viene ritirato
                         if(!clientSocket.send("Ordine pronto e consegnato")){ //l'ordine viene consegnato al cliente
                             cerr << "Errore nell'invio del messaggio al Pub!" << endl;
-                            break;
+                            exit(1);
                         }
                     }
 
@@ -202,7 +210,7 @@ int main() {
 
                     if (clientSocket.receive(message) <= 0) { //il camerire riceve ringraziamenti dal cliente
                         cerr << "Errore nella ricezione del messaggio dal client!" << endl;
-                        break; // Connessione chiusa o errore
+                        exit(1); // Connessione chiusa o errore
                     }
 
                     cout << "Cliente: " << message << endl; //Stampa il messaggio del cliente
@@ -227,6 +235,7 @@ int main() {
 void signalHandler(int signum) {
     //chiusura della socket client
     if (clientSocketPtr != nullptr) {
+        clientSocketPtr->send("termine_cameriere");
         clientSocketPtr->close();
         std::cout << "Client socket closed successfully." << std::endl;
     }
@@ -260,5 +269,20 @@ void send_menu(Socket* client) {
 
     if (!client->send(message)) { //invia il menu al cliente
         cerr << "Errore nell'invio del menu al cliente" << endl;
+    }
+}
+
+// Funzione del cameriere in caso di SIGNIT
+void termine_cameriere(Socket *remoteSocket, Socket *client, string *message) {
+    if (message->compare("termine_cliente") == 0) {
+        cout << "Un cliente si è disconnesso improvvisamente!" << endl;
+        remoteSocket->send(*message);
+        client->close();
+        exit(0);
+    } else if (message->compare("termine_pub") == 0) {
+        cout << "Il pub si è disconnesso improvvisamente! Si prega di riavviarlo." << endl;
+        client->send(*message);
+        remoteSocket->close();
+        exit(0);
     }
 }

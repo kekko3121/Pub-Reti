@@ -195,6 +195,11 @@ bool numero_valido(int num, int min, int max) {
 void signalHandler(int signum) {
     //chiusura della socket client
     if (clientSocketPtr != nullptr) {
+
+        if(!clientSocketPtr->send("termine_cliente")){
+            cerr << "Errore nell'invio del messaggio al Cameriere!" << endl;
+        }
+        
         clientSocketPtr->close();
         std::cout << "Client socket closed successfully." << std::endl;
     }

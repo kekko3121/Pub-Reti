@@ -19,6 +19,9 @@ int* clientiSeduti = nullptr; // Memoria condivisa per il contatore clientiSedut
 // Signal handler per l'interruzione del programma
 void signalHandler(int);
 
+// Funzione del pub in caso di SIGNIT e liberare il tavolo
+void termine_pub(Socket *, string *, int, Pub *);
+
 int main() {
     int shmid; // Identificatore della memoria condivisa
     int shmidClienti;
@@ -105,6 +108,7 @@ int main() {
         if (pid == 0) { // Processo figlio
 
             string message; // memorizzo i messaggi che arrivano dal client
+            int ntavolo;
 
             if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
                 exit(1); // Connessione chiusa o errore ed esco dal ciclo
@@ -125,13 +129,13 @@ int main() {
 
                     //Se il cliente decide di accomodarsi ad un nuovo tavolo, si controlla se ci sono tavoli vuoti disponibili
                     if (message.compare("nuovo") == 0) {
-                        int nuovoTavolo = pub->tavoloVuoto(); // memorizzo il numero di tavolo vuoto
-                        if (nuovoTavolo > 0) { //Verifico se ci sono tavoli vuoti disponibili
-                            if (pub->aggiungiCliente(nuovoTavolo)) { // Aggiungo il cliente al nuovo tavolo
-                                cout << "Cliente aggiunto al tavolo: " << nuovoTavolo << endl;
-                                clientSocket.send(to_string(nuovoTavolo)); // Invio il numero di tavolo al cameriere
+                         ntavolo = pub->tavoloVuoto(); // memorizzo il numero di tavolo vuoto
+                        if (ntavolo > 0) { //Verifico se ci sono tavoli vuoti disponibili
+                            if (pub->aggiungiCliente(ntavolo)) { // Aggiungo il cliente al nuovo tavolo
+                                cout << "Cliente aggiunto al tavolo: " << ntavolo << endl;
+                                clientSocket.send(to_string(ntavolo)); // Invio il numero di tavolo al cameriere
                             } else {
-                                cerr << "Errore: non è stato possibile aggiungere il cliente al tavolo nuovo: " << nuovoTavolo << endl;
+                                cerr << "Errore: non è stato possibile aggiungere il cliente al tavolo nuovo: " << ntavolo << endl;
                                 exit(1); // Termina il processo figlio
                             }
                         } else {
@@ -142,7 +146,7 @@ int main() {
                     //Se il cliente decide di accomodarsi in un tavolo già occupato ma con posti disponibili
                     else{
                         try {
-                            int ntavolo = stoi(message); //conversione della stinga per recuperare il numero di tavolo richiesto
+                            ntavolo = stoi(message); //conversione della stinga per recuperare il numero di tavolo richiesto
                             if(pub->aggiungiCliente(ntavolo)){ //Aggiunge il cliente al tavolo se ci sono posti
                                 cout << "Cliente aggiunto al tavolo: " << ntavolo << endl;
                                 clientSocket.send(message); //invia un messaggio di avviso al cameriere di posti disponibili
@@ -151,17 +155,19 @@ int main() {
                                 clientSocket.send("Tavolo inesistente o posti non disponibili"); //avvisa il camerire
                             }
                         //Eccezioni in caso di errore della conversione della stringa in intero
-                        } catch (const invalid_argument& e) { 
+                        } catch (const invalid_argument& e) {
                             clientSocket.send("Messaggio non valido: non è un numero");
-                            exit(1);;
+                            exit(1);
                         }
                     }
 
                     message.clear();
 
                     if (clientSocket.receive(message) <= 0) { // Ricevo l'ordine dal cameriere
-                        exit(1);;
+                        exit(1);
                     }
+
+                    termine_pub(&clientSocket, &message, ntavolo, pub);
                     
                     if(message.substr(0, 14).compare("Prepara ordine") == 0){ //Se il cameriere ha consegnato l'ordine
                         pub->preparaOrdine(stoi(message.substr(15, 16))); //Prepara l'ordine per il tavolo indicato dal cameriere
@@ -210,5 +216,23 @@ void signalHandler(int signum) {
         serverSocketPtr->close(); //chiudo la socket
         cout << "Server socket closed successfully." << endl; // Stampa di successo
     }
+
+    shmdt(pub);
     exit(signum); // esco dal programma in base al codice passato
+}
+
+// Funzione specifica del pub per gestire i messaggi in caso di SIGNIT e liberare il tavolo
+void termine_pub(Socket *client, string *message, int ntavolo, Pub *pub) {
+    if (message->compare("cameriere_terminate") == 0) {
+        cout << "Il cameriere si è disconnesso improvvisamente!" << endl;
+        pub->liberaPosto(ntavolo);
+        cout << "Si è liberato il posto al tavolo n: "  << ntavolo << endl;
+        client->close();
+        exit(0);
+    } else if (message->compare("termine_cliente") == 0) {
+        cout << "Un cliente si è disconnesso improvvisamente!" << endl;
+        pub->liberaPosto(ntavolo);
+        cout << "Si è liberato il posto al tavolo n: "  << ntavolo << endl;
+        exit(0);
+    }
 }
