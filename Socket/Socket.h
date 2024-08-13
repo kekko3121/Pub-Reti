@@ -60,8 +60,8 @@ bool Socket::bind(int port) { // associa il socket ad una porta
     }
 
     m_addr.sin_family = AF_INET; // inizializzazione della famiglia dell'indirizzo a IPv4
-    m_addr.sin_addr.s_addr = htonl(INADDR_ANY); // inizializzazione dell'indirizzo ip del server
-    m_addr.sin_port = htons(port); // inizializzazione della porta del server
+    m_addr.sin_addr.s_addr = htonl(INADDR_ANY); //Imposta l'indirizzo IP a INADDR_ANY per accettare connessioni da qualsiasi interfaccia di rete.
+    m_addr.sin_port = htons(port); // Converte la porta dal formato dell'host a quello della rete.
 
     if (::bind(m_sock, (struct sockaddr*)&m_addr, sizeof(m_addr)) < 0) { // associa il socket ad un indirizzo e porta
         cerr << "Errore nel bind del socket: " << strerror(errno) << endl;
@@ -78,6 +78,7 @@ bool Socket::listen() const { // mette il socket in ascolto
     }
 
     if (::listen(m_sock, 1024) < 0) { // inizio dell'ascolto del socket
+        //il secondo parametro \texttt{1024} rappresenta il numero massimo di connessioni in coda che possono essere gestite.
         cerr << "Errore nell'ascolto del socket: " << strerror(errno) << endl;
         return false;
     }
@@ -91,8 +92,8 @@ bool Socket::accept(Socket& newSocket) const { // accetta una connessione in ent
         return false;
     }
 
-    socklen_t addr_length = sizeof(m_addr); // lunghezza dell'indirizzo
-    newSocket.m_sock = ::accept(m_sock, (sockaddr*)&m_addr, &addr_length); // accetta la connessione in entrata e restituisce un nuovo socket
+    socklen_t addr_length = sizeof(m_addr); //Determina la dimensione della struttura che conterrà l'indirizzo del client.
+    newSocket.m_sock = ::accept(m_sock, (sockaddr*)&m_addr, &addr_length); // accetta la connessione in entrata e restituisce un nuovo socket per gestirla
 
     if (newSocket.m_sock <= 0) { // se la connessione non è stata accettata
         cerr << "Errore nell'accettare la connessione: " << strerror(errno) << endl;
@@ -162,6 +163,7 @@ int Socket::receive(string& message) const { // riceve un messaggio
 }
 
 bool Socket::close() { //chiude la socket
+    //Tenta di chiudere il socket usando la funzione di sistema
     if (::close(m_sock) < 0) { //se la chiusura del socket fallisce
         cerr << "Errore nella chiusura del socket: " << strerror(errno) << endl;
         return false;
@@ -182,7 +184,7 @@ bool Socket::close() { //chiude la socket
 }
 
 void Socket::setNonBlocking(const bool b) { // setta il socket in modalità non bloccante
-    int opts = fcntl(m_sock, F_GETFL); // prendo le opzioni del socket
+    int opts = fcntl(m_sock, F_GETFL); // recupera le opzioni del socket
 
     if (opts < 0) { //se non riesco a leggere le impostazioni del socket
         cerr << "Errore nel recupero delle opzioni del socket: " << strerror(errno) << endl;
@@ -194,7 +196,7 @@ void Socket::setNonBlocking(const bool b) { // setta il socket in modalità non 
     }
     
     else {
-        opts &= ~O_NONBLOCK; // setta il socket in modalità bloccante
+        opts &= ~O_NONBLOCK; // setta il socket in modalità bloccante (rimuovo l'opzione)
     }
 
     if (fcntl(m_sock, F_SETFL, opts) < 0) { // Applica le nuove impostazioni al socket
