@@ -9,29 +9,27 @@ class Tavolo{
     private:
         
         int maxSedieTavolo; // numero massimo di sedie disponibili per tavolo
-        int* clientiSeduti; // numero di clienti seduti al tavolo
+        int clientiSeduti; // numero di clienti seduti al tavolo
 
     public:
 
-        //Crea un nuovo tavolo con numero di sedie disponibili
-        Tavolo(int maxSedie, int* clientiSeduti);
+        //Crea un nuovo tavolo con un numero di sedie disponibili
+        Tavolo(int maxSedie);
         bool addCliente(); // aggiunge un cliente al tavolo
         bool postoDisponibile(); // verifica se il tavolo non è pieno
         void liberaPosto(); //libera il posto al tavolo
         int getNumeroTavolo(); // restituisce il numero del tavolo
-        int getNumeroClienti(); //restituisce il numero di clienti seduti al tavolo
-        int getMaxSedieTavolo(); //restituisce massimo di posti disponibile al tavolo
+        int getNumeroClienti(); // restituisce il numero di clienti seduti al tavolo
+        int getMaxSedieTavolo(); // restituisce massimo di posti disponibile al tavolo
         bool tavoloVuoto(); // verifica se il tavolo è vuoto
 };
 
 // Costruttore per inizializzare clientiSeduti e impostare il numero massimo di sedie
-Tavolo::Tavolo(int maxSedie, int* clientiSeduti) : maxSedieTavolo(maxSedie), clientiSeduti(clientiSeduti) {
-        *clientiSeduti = 0;  // Inizializza il contatore nella memoria condivisa
-}
+Tavolo::Tavolo(int maxSedie) : maxSedieTavolo(maxSedie), clientiSeduti(0) {}
 
 bool Tavolo::addCliente(){
-    if(postoDisponibile()){ //Se ci sono posti disponibili
-        (*clientiSeduti)++; //aggiungo il cliente incrementando il contatore
+    if(postoDisponibile()){ // Se ci sono posti disponibili
+        clientiSeduti++; // aggiungo il cliente incrementando il contatore
         return true; // restituisce vero se ci sono posti disponibili
     }
 
@@ -39,25 +37,25 @@ bool Tavolo::addCliente(){
 }
 
 bool Tavolo::postoDisponibile(){
-    return *clientiSeduti < maxSedieTavolo; //restituisce true se il tavolo non è pieno altrimenti restituisce false
+    return clientiSeduti < maxSedieTavolo; //restituisce true se il tavolo non è pieno altrimenti restituisce false
 }
 
 void Tavolo::liberaPosto(){
-    if(*clientiSeduti > 0){
-        (*clientiSeduti)--; // rimuove il cliente decrementando il contatore
+    if(clientiSeduti > 0){ // Se il tavolo non è vuoto
+        clientiSeduti--; // rimuove il cliente decrementando il contatore
     }
 }
 
 int Tavolo::getNumeroClienti(){
-    return *clientiSeduti; // restituisce il numero di clienti seduti al tavolo
+    return this->clientiSeduti; // restituisce il numero di clienti seduti al tavolo
 }
 
 bool Tavolo::tavoloVuoto(){
-    return *clientiSeduti == 0; // restituisce true se il tavolo è vuoto, altrimenti false
+    return this->clientiSeduti == 0; // restituisce true se il tavolo è vuoto, altrimenti false
 }
 
 int Tavolo::getMaxSedieTavolo(){  //restituisce massimo di posti disponibile al tavolo
-    return maxSedieTavolo;
+    return this->maxSedieTavolo;
 }
 
 #endif // TAVOLO_H

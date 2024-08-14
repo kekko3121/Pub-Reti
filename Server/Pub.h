@@ -15,13 +15,15 @@ class Pub {
 
         int maxClienti; // numero massimo di cliente che possono entrare nel locale
         int maxTavoli; // numero massimo di tavoli disponibili
-        map<int, Tavolo> tavoli; // lista dei tavoli nel locale
-        int* clientiSeduti; // Memoria condivisa per clientiSeduti
+        int ntavoli; // numero di tavolo presenti nel Pub
+        int shmID; // identificatore memoria condivisa
+        Tavolo* tavoli; // lista dei tavoli nel locale
 
     public:
 
-        //Creo un Pub con il numero massimo di clienti e di tavoli
-        Pub(int maxClienti, int maxTavoli, int* clientiSeduti);
+        // Creo un Pub con il numero massimo di clienti e di tavoli
+        Pub(int maxClienti, int maxTavoli);
+        ~Pub(); // Distruttore per il dettach della memoria condivisa
         bool aggiungiTavolo(int maxSedie); // metodo per aggiungere un tavolo nel locale
         bool postoDisponibile(int numeroTavolo); // metodo per verificare se ci sono posti nel tavolo scelto 
         bool aggiungiCliente(int numeroTavolo); // metodo per aggiungere il cliente al tavolo scelto
@@ -31,37 +33,63 @@ class Pub {
         int postiDisponibili(); // verifica se ci sono posti liberi nel Pub
 };
 
-//Costruttore per inizializzare l'array di tavoli e impostare il numero massimo di clienti e il numero massimo di tavoli
-Pub::Pub(int maxClienti, int maxTavoli, int* clientiSeduti) : maxClienti(maxClienti), maxTavoli(maxTavoli), clientiSeduti(clientiSeduti) {}
+/* Costruttore per inizializzare l'array di tavoli in memoria condivisa e impostare il numero massimo di clienti, il numero massimo di tavoli
+   e inizizializzare ntavoli */
+Pub::Pub(int maxClienti, int maxTavoli) : maxClienti(maxClienti), maxTavoli(maxTavoli), ntavoli(1) {
+    
+    // Creazione/accesso alla memoria condivisa per l'array tavoli
+    if ((this->shmID = shmget(IPC_PRIVATE, sizeof(Tavolo), IPC_CREAT | 0666)) < 0) {
+        cerr << "Errore durante la shmget per Tavolo" << endl;
+        exit(1);
+    }
+    
+    // Attacco della memoria condivisa
+    this->tavoli = (Tavolo *) shmat(shmID, NULL, 0);
+    if (tavoli == (Tavolo*)-1) {
+        cerr << "Errore durante la shmat per tavoli" << endl;
+        exit(1);
+    }
+}
+
+Pub::~Pub(){
+
+    // Dettach della memoria condivisa
+    shmdt(tavoli);
+    shmctl(shmID, IPC_RMID, NULL);
+}
 
 bool Pub::aggiungiTavolo(int maxSedie) {
-    if (tavoli.size() < maxTavoli) { //Se non ho raggiunto il massimo di tavoli disponibili
-        tavoli.insert(pair<int, Tavolo>(tavoli.size() + 1, Tavolo(maxSedie, &clientiSeduti[tavoli.size()]))); //aggiungo un nuovo tavolo
-        return true;
+    if (ntavoli <= maxTavoli) { //Se non ho raggiunto il massimo di tavoli disponibili
+        new (&tavoli[ntavoli]) Tavolo(maxSedie); //aggiungo un nuovo tavolo
+        
+        //incremento il numero di tavoli
+        ntavoli++;
+
+        return true; // Restituisce true se il tavolo è stato aggiunto
     }
 
-    return false;
+    return false; // Restituisce false se il tavolo non è stato aggiunto
 }
 
 bool Pub::aggiungiCliente(int numeroTavolo) {
-    if (tavoli.at(numeroTavolo).addCliente()) { //In base al numero di tavolo aggiungo il cliente
+    if (tavoli[numeroTavolo].addCliente()) { //In base al numero di tavolo aggiungo il cliente
         return true; // restituisce vero se è andato a buon fine la procedura
     }
     return false; // altrimenti restituisce falso per un errore
 }
 
 int Pub::tavoloVuoto(){
-    for(auto &x : tavoli){
-        if(x.second.tavoloVuoto()){ //Se il tavolo è vuoto
-            return x.first; // restituisce il numero di tavolo
+    for(int i = 1; i <= ntavoli; i++){ // Scorro tutti i tavoli
+        if(tavoli[i].tavoloVuoto()){ //Se il tavolo è vuoto
+            return i; // restituisce il numero di tavolo
         }
     }
 
-    return -1;
+    return -1; // altrimenti restituisce un numero negativo per segnalare che non ci sono tavoli vuoti 
 }
 
 void Pub::liberaPosto(int numeroTavolo) {
-        tavoli.at(numeroTavolo).liberaPosto(); //libera il posto al numero del tavolo
+        tavoli[numeroTavolo].liberaPosto(); //libera il posto al numero del tavolo
 }
 
 void Pub::preparaOrdine(int ntavolo) {
@@ -72,9 +100,9 @@ void Pub::preparaOrdine(int ntavolo) {
 
 int Pub::postiDisponibili() {
     int posti = 0; //variabile per contare il numero di posti disponibili
-    for (auto &x : tavoli) {
+    for (int i = 1; i <= ntavoli; i++) { // Scorre tutti i tavoli
         //calcola il numero di posti liberi in base al numero massimo di sedie disponibili
-        posti += (x.second.getMaxSedieTavolo() - x.second.getNumeroClienti());
+        posti += (tavoli[i].getMaxSedieTavolo() - tavoli[i].getNumeroClienti());
     }
     return posti; // ritorna il numero di posti disponibili
 }
