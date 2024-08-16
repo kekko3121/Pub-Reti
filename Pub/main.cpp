@@ -6,7 +6,7 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <semaphore.h>
+//#include <semaphore.h>
 #include "Pub.h"
 #include "../Socket/Socket.h"
 using namespace std;
