@@ -101,7 +101,7 @@ void Pub::preparaOrdine(int ntavolo) {
 int Pub::postiDisponibili() {
     int posti = 0; //variabile per contare il numero di posti disponibili
     for (int i = 1; i <= ntavoli; i++) { // Scorre tutti i tavoli
-        //calcola il numero di posti liberi in base al numero massimo di sedie disponibili
+        // Per ogni tavolo, la funzione calcola il numero di posti liberi sottraendo il numero di clienti presenti dal numero massimo di sedie disponibili.
         posti += (tavoli[i].getMaxSedieTavolo() - tavoli[i].getNumeroClienti());
     }
     return posti; // ritorna il numero di posti disponibili
