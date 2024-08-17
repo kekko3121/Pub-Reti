@@ -107,11 +107,11 @@ int main() {
 
         if (pid == 0) { // Processo figlio
 
-            string message; // memorizza il messaggi che arrivano dal client
+            string message; // memorizza i messaggi che arrivano dal client
             int ntavolo; // memorizza il numero di tavolo
 
             if (clientSocket.receive(message) <= 0) { // se il messaggio non viene ricevuto correttamente
-                exit(1); // In caso di errore termino il processo figlio
+                exit(1); //termino il processo figlio
             }
 
             //verifica se ci sono posti disponibili per far accomodare il cliente
