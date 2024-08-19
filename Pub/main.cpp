@@ -6,7 +6,6 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <unistd.h>
-//#include <semaphore.h>
 #include "Pub.h"
 #include "../Socket/Socket.h"
 using namespace std;
@@ -192,8 +191,6 @@ int main() {
             clientSocket.receive(message);
 
             cout << "Cameriere: " << message << endl; // Stampa il messaggio del cameriere
-
-            message.clear();
 
             if(message.substr(0,29).compare("Cliente ha liberato il tavolo") == 0){ // Se il cliente se ne è andato
                 pub->liberaPosto(stoi(message.substr(33))); // libera il posto al numero di tavolo
