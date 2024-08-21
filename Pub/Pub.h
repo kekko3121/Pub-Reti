@@ -6,7 +6,6 @@
 #define PUB_H
 
 #include <iostream>
-#include <map>
 #include "Tavolo.h"
 using namespace std;
 
