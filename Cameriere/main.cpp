@@ -114,6 +114,8 @@ int main() {
                     exit(1); // Termina il processo figlio
                 }
 
+                termine_cameriere(&remoteSocket, &clientSocket, &message); // Se il cliente o il pub si disconnettono senza preavviso
+
                 if(message.compare("Si") == 0){ // Se ci sono posti
                     // chiede al cliente dove vuole accomodarsi
                     if(!clientSocket.send("Vuole accomodarsi a un nuovo tavolo o ad uno già prenotato? \n Scriva nuovo o numero tavolo")){
@@ -128,6 +130,8 @@ int main() {
                         exit(1); // Termina il processo figlio
                     }
 
+                    termine_cameriere(&remoteSocket, &clientSocket, &message); // Se il cliente o il pub si disconnettono senza preavviso
+
                     if(!remoteSocket.send(message)){ // Invia la richiesta del tavolo scelto al Pub
                         cerr << "Errore nell'invio del messaggio al Pub!" << endl;
                         exit(1); // Termina il processo figlio
@@ -139,6 +143,8 @@ int main() {
                         cerr << "Errore nella ricezione del messaggio dal Pub!" << endl;
                         exit(1); // Termina il processo figlio
                     }
+
+                    termine_cameriere(&remoteSocket, &clientSocket, &message); // Se il cliente o il pub si disconnettono senza preavviso
 
                     try{ // eccezione se viene richiesto un tavolo non esistente
                         ntavolo = stoi(message); // memorizza il numero di tavolo
@@ -192,6 +198,8 @@ int main() {
                             cerr << "Errore nella ricezione del messaggio dal client!" << endl;
                             exit(1); // Termina il processo figlio
                         }
+
+                        termine_cameriere(&remoteSocket, &clientSocket, &message); // Se il cliente o il pub si disconnettono senza preavviso
 
                         cout << "Pub: " << message << endl; //Stampa il messaggio
 

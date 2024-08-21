@@ -12,6 +12,7 @@ using namespace std;
 
 // Socket globale per il signal handling
 Socket* serverSocketPtr = nullptr;
+Socket* clientSocketPtr = nullptr;
 Pub* pub = nullptr; // Puntatore alla classe Pub per la memoria condivisa
 
 // Signal handler per l'interruzione del programma
@@ -93,6 +94,8 @@ int main() {
             cerr << "Errore nell'accettare la connessione!" << endl;
             continue; // continua con il ciclo
         }
+
+        clientSocketPtr = &clientSocket;
 
         cout << "Il cameriere sta servendo un Cliente" << endl; // stampa un messaggio di successo della connessione con il client
 
@@ -211,8 +214,11 @@ int main() {
 // Signal handler per l'interruzione del programma
 void signalHandler(int signum) {
     if (serverSocketPtr != nullptr) { // se ho il contenuto della socket
-        serverSocketPtr->send("termine_cameriere");
-        serverSocketPtr->close(); //chiudo la socket
+        clientSocketPtr->send("termine_pub");
+        
+        // chiudo i socket
+        clientSocketPtr->close();
+        serverSocketPtr->close();
         cout << "Server socket closed successfully." << endl; // Stampa di successo
     }
 

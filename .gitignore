@@ -396,6 +396,3 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-Pub/main
-Cliente/main
-Cameriere/main
