@@ -80,7 +80,7 @@ Esecuzione
 
 ## Documentazione
 
-Per consultare la documentazione andare al seguente link: [https://github.com/kekko3121/Pub-Reti/blob/main/Relazione/Relazione_Progetto_Reti_di_Calcolatori___Laboratorio.pdf](https://github.com/kekko3121/Pub-Reti/blob/main/Relazione/Relazione_Progetto_Reti_di_Calcolatori___Laboratorio.pdf)
+Per consultare la documentazione andare al seguente link: [https://github.com/kekko3121/Pub-Reti/blob/main/Relazione/Relazione_Progetto_Reti_di_Calcolatori___Laboratorio.pdf](https://github.com/kekko3121/Pub-Reti/blob/main/Relazione/Relazione_Progetto_Reti_di_Calcolatori___Laboratorio-2.pdf)
 
 ## Authors
 
